@@ -9,6 +9,7 @@ var Timetable = function() {
 	};
 	this.usingTwelveHour = false;
 	this.locations = [];
+	this.locationLinks = {};
 	this.events = [];
 };
 
@@ -79,6 +80,29 @@ Timetable.Renderer = function(tt) {
 
 			return this;
 		},
+		setLocationLink: function(location, url) {
+			if (!locationExistsIn(location, this.locations)) {
+				throw new Error('Unknown location');
+			}
+
+			this.locationLinks[location] = {
+				url: url
+			};
+
+			return this;
+		},
+		setLocationInfo: function(location, info) {
+			if (!locationExistsIn(location, this.locations)) {
+				throw new Error('Unknown location');
+			}
+
+			if (this.locationLinks[location] === undefined) {
+				this.locationLinks[location] = {};
+			}
+			this.locationLinks[location].info = info;
+
+			return this;
+		},
 		addEvent: function(name, location, start, end, options) {
 			if (!locationExistsIn(location, this.locations)) {
 				throw new Error('Unknown location');
@@ -136,9 +160,59 @@ Timetable.Renderer = function(tt) {
 			function appendRowHeaders(ulNode) {
 				for (var k=0; k<timetable.locations.length; k++) {
 					var liNode = ulNode.appendChild(document.createElement('li'));
-					var spanNode = liNode.appendChild(document.createElement('span'));
-					spanNode.className = 'row-heading';
-					spanNode.textContent = timetable.locations[k];
+					var location = timetable.locations[k];
+					var locationNode = liNode.appendChild(document.createElement('span'));
+					locationNode.className = 'row-heading';
+					locationNode.textContent = location;
+					var links = timetable.locationLinks[location];
+					if (links !== undefined && links.info !== undefined) {
+						appendLocationInfoLink(liNode, location);
+					}
+				}
+			}
+			function appendLocationInfoLink(node, location) {
+				var infoLinkNode = node.appendChild(document.createElement('a'));
+				infoLinkNode.className = 'location-info-link';
+				infoLinkNode.textContent = '> More Info';
+				infoLinkNode.href = '#' + getLocationInfoId(location);
+			}
+			function getLocationInfoId(location) {
+				return 'location-info-' + timetable.locations.indexOf(location);
+			}
+			function appendLocationInfoSection(container) {
+				var existingInfoSection = container.nextSibling;
+				if (existingInfoSection !== null && existingInfoSection.className === 'location-info-list') {
+					container.parentNode.removeChild(existingInfoSection);
+				}
+
+				var infoSection = document.createElement('section');
+				infoSection.className = 'location-info-list';
+
+				for (var k = 0; k < timetable.locations.length; k++) {
+					var location = timetable.locations[k];
+					var links = timetable.locationLinks[location];
+					if (links === undefined || (links.url === undefined && links.info === undefined)) {
+						continue;
+					}
+
+					var infoNode = infoSection.appendChild(document.createElement('article'));
+					infoNode.id = getLocationInfoId(location);
+					var headingNode = infoNode.appendChild(document.createElement('h2'));
+					headingNode.textContent = location;
+					if (links.url !== undefined) {
+						var locationLinkNode = infoNode.appendChild(document.createElement('p'));
+						var locationAnchorNode = locationLinkNode.appendChild(document.createElement('a'));
+						locationAnchorNode.textContent = '> Location';
+						locationAnchorNode.href = links.url;
+					}
+					if (links.info !== undefined) {
+						var textNode = infoNode.appendChild(document.createElement('p'));
+						textNode.textContent = links.info;
+					}
+				}
+
+				if (infoSection.childNodes.length > 0) {
+					container.parentNode.insertBefore(infoSection, container.nextSibling);
 				}
 			}
 			function appendTimetableSection(container) {
@@ -251,6 +325,7 @@ Timetable.Renderer = function(tt) {
 			emptyNode(container);
 			appendTimetableAside(container);
 			appendTimetableSection(container);
+			appendLocationInfoSection(container);
 			//syncscroll.reset();
 		}
 	};

@@ -8,7 +8,7 @@ a {
   text-decoration: none;
 }
 
-.row-heading {
+.row-heading,.location-info-link {
   font-weight: 500;
   font-size: 0.7em;
   text-transform: uppercase;

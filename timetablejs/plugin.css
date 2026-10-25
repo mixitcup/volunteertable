@@ -38,7 +38,9 @@
 .timetable > aside li {
   padding: 0 15px;
   background-color: #EFEFEF;
-  line-height: 46px;
+  height: 46px;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .timetable > aside li:not(:last-of-type) {
@@ -46,12 +48,37 @@
 }
 
 .timetable > aside .row-heading {
-  display: inline-block;
+  display: block;
+  line-height: 16px;
+  max-width: 100%;
+  white-space: nowrap;
+  word-wrap: normal;
+}
+
+.timetable > aside .location-info-link {
+  display: block;
+  line-height: 13px;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  word-wrap: normal;
+}
+
+.location-info-list {
+  margin: 30px 0;
+}
+
+.location-info-list article {
+  margin-bottom: 24px;
+}
+
+.location-info-list h2,
+.location-info-list p {
+  margin: 0 0 8px;
+}
+
+.location-info-list p {
+  white-space: pre-wrap;
 }
 
 .timetable > aside::before {
