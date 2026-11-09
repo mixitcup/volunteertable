@@ -318,6 +318,25 @@ a {
   font-weight: 700;
 }
 
+/* Events you're registered for are yellow (also when full); once over, they turn grey like all past events. */
+.timetable .time-entry.is-mine:not(.is-past) {
+  background-color: #FFD54F;
+  border-color: #E0A800;
+  color: #3E2F00;
+}
+
+.timetable .time-entry.is-mine:not(.is-past):hover {
+  background-color: #FFC928;
+}
+
+.timetable .time-entry.is-mine:not(.is-past) .registration-bar {
+  background-color: rgba(62, 47, 0, 0.15);
+}
+
+.timetable .time-entry.is-mine:not(.is-past) .registration-bar-fill {
+  background-color: #7A5C00;
+}
+
 .event-info-list article.is-past {
   color: #999;
 }
