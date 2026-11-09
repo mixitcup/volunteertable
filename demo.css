@@ -585,3 +585,21 @@ a {
 .location-admin[hidden] {
   display: none;
 }
+
+.admin-link-box {
+  max-width: 640px;
+  margin: 12px 0 24px;
+  padding: 12px 16px;
+  border: 1px solid #E5E5E5;
+  border-radius: 6px;
+  background-color: #FAFAFA;
+}
+
+.admin-link-box h2 {
+  margin: 0 0 6px;
+  font-size: 1.1em;
+}
+
+.admin-link-box p {
+  margin: 0 0 6px;
+}

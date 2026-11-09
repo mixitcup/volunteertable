@@ -1081,6 +1081,7 @@
 
       function showAdminLink(result) {
         var done = document.getElementById('admin-setup-done');
+        saveAdminLink(result.adminLink);
         var input = el('input');
         input.readOnly = true;
         input.value = result.adminLink;
@@ -1107,6 +1108,59 @@
         done.hidden = false;
       }
 
+      // A read-only link with a Copy button.
+      function renderLinkRow(link, label) {
+        var input = el('input');
+        input.readOnly = true;
+        input.value = link;
+        input.setAttribute('aria-label', label);
+        var copy = button('Copy', 'button button-secondary', function() {
+          input.select();
+          var copied = navigator.clipboard ?
+            navigator.clipboard.writeText(input.value) :
+            Promise.reject(new Error('Clipboard not available'));
+          copied.then(function() { copy.textContent = 'Copied'; }, function() { copy.textContent = 'Press Ctrl+C'; });
+        });
+        return el('div', 'edit-link-row', input, copy);
+      }
+
+      /*
+       * The admin link is only kept in this browser's local storage (the server
+       * stores just a fingerprint of it). It is saved when becoming admin and
+       * when opening an admin link.
+       */
+      var ADMIN_LINK_STORAGE_KEY = 'volunteertable-admin-link';
+
+      function saveAdminLink(link) {
+        try {
+          window.localStorage.setItem(ADMIN_LINK_STORAGE_KEY, link);
+        } catch (e) {
+          // Storage unavailable (e.g. private mode): the link is then only in the admin's email.
+        }
+      }
+
+      function loadAdminLink() {
+        try {
+          return window.localStorage.getItem(ADMIN_LINK_STORAGE_KEY);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function renderAdminLinkBox() {
+        var link = loadAdminLink();
+        var box = el('div', 'admin-link-box', el('h2', null, 'Your admin link'));
+        if (link) {
+          box.appendChild(el('p', 'hint', 'Open this link to log in as admin on another device or browser. ' +
+            'Keep it safe: anyone with it can manage everything here.'));
+          box.appendChild(renderLinkRow(link, 'Your admin link'));
+        } else {
+          box.appendChild(el('p', 'hint', 'This browser doesn’t have your admin link saved. You find it in the ' +
+            'email you got when you became admin; opening it once here also saves it in this browser.'));
+        }
+        return box;
+      }
+
       function renderAdminPanel(locationInfoIds) {
         document.getElementById('admin-tab-link').hidden = admin === null;
         var panel = document.querySelector('.admin-panel');
@@ -1119,6 +1173,8 @@
         panel.appendChild(el('p', 'hint', 'Logged in as admin: ' + admin.name + ' (' + admin.email + ') · ' +
           adminUsers.length + (adminUsers.length === 1 ? ' person' : ' people') + ', ' +
           bookingCount + (bookingCount === 1 ? ' registration' : ' registrations')));
+
+        panel.appendChild(renderAdminLinkBox());
 
         if (adminUsers.length === 0) {
           panel.appendChild(el('p', null, 'Nobody has registered for an event yet.'));
@@ -1184,6 +1240,7 @@
 
         return api('admin_login', { token: token }).then(function(result) {
           if (result.ok) {
+            saveAdminLink(window.location.origin + window.location.pathname + '?admin=' + token + '#admin-tab');
             showNotice('You are now logged in as admin in this browser.', false);
           } else {
             showNotice('This admin link is not valid.', true);
