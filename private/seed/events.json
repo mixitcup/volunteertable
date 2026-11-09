@@ -1,0 +1,182 @@
+[
+  {
+    "name": "Sightseeing",
+    "location": "Rotterdam",
+    "start": "2026-11-09T10:45:00",
+    "end": "2026-11-09T12:30:00",
+    "info": "Guided walk through the old town. Wear comfortable shoes.",
+    "capacity": 10,
+    "url": "#",
+    "bookings": [
+      {
+        "name": "Anna",
+        "email": "anna@example.org"
+      },
+      {
+        "name": "Ben",
+        "email": "ben@example.org"
+      },
+      {
+        "name": "Chiara",
+        "email": "chiara@example.org"
+      }
+    ]
+  },
+  {
+    "name": "Zumba",
+    "location": "Madrid",
+    "start": "2026-11-09T12:00:00",
+    "end": "2026-11-09T13:00:00",
+    "info": "Help set up the sound system and hand out water.",
+    "capacity": 3,
+    "url": "#",
+    "bookings": [
+      {
+        "name": "Ben",
+        "email": "ben@example.org"
+      },
+      {
+        "name": "Chiara",
+        "email": "chiara@example.org"
+      },
+      {
+        "name": "David",
+        "email": "david@example.org"
+      }
+    ]
+  },
+  {
+    "name": "Zumbu",
+    "location": "Madrid",
+    "start": "2026-11-10T13:30:00",
+    "end": "2026-11-10T15:00:00",
+    "url": "#"
+  },
+  {
+    "name": "Lasergaming",
+    "location": "London",
+    "start": "2026-11-10T17:45:00",
+    "end": "2026-11-10T19:30:00",
+    "capacity": 8,
+    "url": "#",
+    "bookings": [
+      {
+        "name": "David",
+        "email": "david@example.org"
+      },
+      {
+        "name": "Elif",
+        "email": "elif@example.org"
+      },
+      {
+        "name": "Finn",
+        "email": "finn@example.org"
+      },
+      {
+        "name": "Greta",
+        "email": "greta@example.org"
+      },
+      {
+        "name": "Hamid",
+        "email": "hamid@example.org"
+      }
+    ]
+  },
+  {
+    "name": "All-you-can-eat grill",
+    "location": "New York",
+    "start": "2026-11-09T21:00:00",
+    "end": "2026-11-10T01:30:00",
+    "url": "#"
+  },
+  {
+    "name": "Hackathon",
+    "location": "Tokyo",
+    "start": "2026-11-09T11:30:00",
+    "end": "2026-11-09T20:00:00",
+    "info": "Volunteers support registration and catering throughout the day.",
+    "capacity": 40,
+    "bookings": [
+      {
+        "name": "Finn",
+        "email": "finn@example.org"
+      },
+      {
+        "name": "Greta",
+        "email": "greta@example.org"
+      },
+      {
+        "name": "Hamid",
+        "email": "hamid@example.org"
+      },
+      {
+        "name": "Ida",
+        "email": "ida@example.org"
+      }
+    ]
+  },
+  {
+    "name": "Tokyo Hackathon Livestream",
+    "location": "Los Angeles",
+    "start": "2026-11-09T12:30:00",
+    "end": "2026-11-09T16:15:00"
+  },
+  {
+    "name": "Lunch",
+    "location": "Jakarta",
+    "start": "2026-11-09T09:30:00",
+    "end": "2026-11-09T11:45:00",
+    "info": "Serving lunch to participants. Hairnets are provided.",
+    "capacity": 6,
+    "url": "#",
+    "bookings": [
+      {
+        "name": "Hamid",
+        "email": "hamid@example.org"
+      }
+    ]
+  },
+  {
+    "name": "Farewell breakfast",
+    "location": "Jakarta",
+    "start": "2026-11-11T09:30:00",
+    "end": "2026-11-11T11:00:00",
+    "capacity": 10,
+    "bookings": [
+      {
+        "name": "Ida",
+        "email": "ida@example.org"
+      },
+      {
+        "name": "Jonas",
+        "email": "jonas@example.org"
+      },
+      {
+        "name": "Anna",
+        "email": "anna@example.org"
+      },
+      {
+        "name": "Ben",
+        "email": "ben@example.org"
+      }
+    ]
+  },
+  {
+    "name": "Clean-up",
+    "location": "Rotterdam",
+    "start": "2026-11-11T10:00:00",
+    "end": "2026-11-11T13:00:00",
+    "capacity": 15,
+    "info": "Help take down the stands. Gloves are provided.",
+    "bookings": [
+      {
+        "name": "Jonas",
+        "email": "jonas@example.org"
+      },
+      {
+        "name": "Anna",
+        "email": "anna@example.org"
+      }
+    ]
+  }
+]

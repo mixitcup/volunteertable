@@ -16,10 +16,13 @@
       <p>Vanilla javascript plugin for building nice responsive timetables. More info on <a href="https://github.com/Grible/timetable.js" target="_blank">Github</a>.</p>
     </div>
 
+    <div id="notice" class="notice" role="status" hidden></div>
+
     <nav class="tabs" role="tablist">
       <a href="#timetable-tab" role="tab" aria-controls="timetable-tab">Timetable</a>
       <a href="#locations-tab" role="tab" aria-controls="locations-tab">Location info</a>
       <a href="#events-tab" role="tab" aria-controls="events-tab">Event info</a>
+      <a href="#my-events-tab" role="tab" aria-controls="my-events-tab">My events<span class="tab-count" id="my-events-count" hidden></span></a>
     </nav>
 
     <section id="timetable-tab" class="tab-panel" role="tabpanel">
@@ -34,12 +37,28 @@
       <div class="event-info-list"></div>
     </section>
 
+    <section id="my-events-tab" class="tab-panel" role="tabpanel" hidden>
+      <div class="my-event-list"></div>
+    </section>
+
     <script src="timetablejs/plugin.js"></script>
 
     <script>
       var DEFAULT_TAB = 'timetable-tab';
+      var CONTACT_STORAGE_KEY = 'volunteertable-contact';
+
+      var data = { locations: [], events: [] };
+      var myBookings = [];
       var timetableRenderer = null;
       var timetableScrolledToNow = false;
+      // UI state that survives re-rendering after each change.
+      var openFormEventId = null;
+      var editingBookingId = null;
+      var confirmations = {};
+
+      /* ------------------------------------------------------------------
+       * Tabs
+       * ------------------------------------------------------------------ */
 
       // Scrolling only works while the timetable is visible, so this is
       // retried whenever the timetable tab is shown until it succeeds once.
@@ -49,9 +68,9 @@
         }
       }
 
-      // Tabs are driven by the URL hash, so "More Info" and event links (which
-      // point at #location-info-N / #event-info-N) open the right tab, and the
-      // browser's back button returns to the previous tab.
+      // Tabs are driven by the URL hash, so links to #location-info-N,
+      // #event-ID or #my-booking-ID open the right tab, and the browser's
+      // back button returns to the previous tab.
       function showTabForHash() {
         var id = decodeURIComponent(window.location.hash.slice(1));
         var target = id ? document.getElementById(id) : null;
@@ -88,12 +107,56 @@
       window.addEventListener('hashchange', showTabForHash);
       showTabForHash();
 
-      function getEventInfoId(index) {
-        return 'event-info-' + index;
+      /* ------------------------------------------------------------------
+       * Helpers
+       * ------------------------------------------------------------------ */
+
+      function api(action, body) {
+        var options = { credentials: 'same-origin' };
+        if (body !== undefined) {
+          options.method = 'POST';
+          options.headers = { 'Content-Type': 'application/json' };
+          options.body = JSON.stringify(body);
+        }
+        return fetch('api/app.php?action=' + action, options).then(function(response) {
+          return response.json()
+            .catch(function() { return {}; })
+            .then(function(result) {
+              return { ok: response.ok, status: response.status, data: result };
+            });
+        });
+      }
+
+      // Creates an element: el('p', 'class-name', 'text or node', node, ...).
+      function el(tag, className) {
+        var node = document.createElement(tag);
+        if (className) {
+          node.className = className;
+        }
+        Array.prototype.slice.call(arguments, 2).forEach(function(child) {
+          if (child !== null && child !== undefined) {
+            node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+          }
+        });
+        return node;
+      }
+
+      function button(text, className, onClick) {
+        var node = el('button', className, text);
+        node.type = 'button';
+        node.addEventListener('click', onClick);
+        return node;
+      }
+
+      function showNotice(text, isError) {
+        var notice = document.getElementById('notice');
+        notice.textContent = text;
+        notice.classList.toggle('is-error', Boolean(isError));
+        notice.hidden = false;
       }
 
       function formatTimeRange(start, end) {
-        var dateFormat = { day: 'numeric', month: 'short', year: 'numeric' };
+        var dateFormat = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
         var timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
         var text = start.toLocaleDateString('en-GB', dateFormat) + ', ' +
           start.toLocaleTimeString('en-GB', timeFormat) + ' – ';
@@ -103,134 +166,541 @@
         return text + end.toLocaleTimeString('en-GB', timeFormat);
       }
 
-      function renderEventInfo(events, locationInfoIds) {
+      function getEventInfoId(event) {
+        return 'event-' + event.id;
+      }
+
+      function findEvent(eventId) {
+        return data.events.filter(function(event) { return event.id === eventId; })[0] || null;
+      }
+
+      function findMyBooking(eventId) {
+        return myBookings.filter(function(booking) { return booking.eventId === eventId; })[0] || null;
+      }
+
+      function isPast(event) {
+        return new Date(event.end).getTime() <= Date.now();
+      }
+
+      // Name and email of the last registration, to prefill the form (per browser only).
+      function loadContact() {
+        try {
+          var stored = JSON.parse(window.localStorage.getItem(CONTACT_STORAGE_KEY));
+          if (stored && typeof stored.name === 'string' && typeof stored.email === 'string') {
+            return stored;
+          }
+        } catch (e) {
+          // Storage unavailable (e.g. private mode): just don't prefill.
+        }
+        var last = myBookings[myBookings.length - 1];
+        return last ? { name: last.name, email: last.email } : { name: '', email: '' };
+      }
+
+      function saveContact(name, email) {
+        try {
+          window.localStorage.setItem(CONTACT_STORAGE_KEY, JSON.stringify({ name: name, email: email }));
+        } catch (e) {
+          // Not essential.
+        }
+      }
+
+      // Marks entries on the Event info and My events tabs as past or ongoing.
+      function updateEventTimes() {
+        var now = Date.now();
+        document.querySelectorAll('.event-info-list article, .my-event-list article').forEach(function(article) {
+          var past = Number(article.dataset.end) <= now;
+          article.classList.toggle('is-past', past);
+          article.classList.toggle('is-current', !past && Number(article.dataset.start) <= now);
+          // Registering for an event that is over makes no sense.
+          var addButton = article.querySelector('.add-me-button');
+          if (addButton !== null && past) {
+            addButton.hidden = true;
+          }
+        });
+      }
+      setInterval(updateEventTimes, Timetable.NOW_UPDATE_INTERVAL);
+
+      /* ------------------------------------------------------------------
+       * Timetable and location info
+       * ------------------------------------------------------------------ */
+
+      function renderTimetable() {
+        var timetable = new Timetable();
+        timetable.setScope(9, 2);
+        timetable.setLocationInfoContainer('.location-info');
+        timetable.addLocations(data.locations.map(function(location) {
+          return location.name;
+        }));
+
+        data.locations.forEach(function(location) {
+          if (location.url) {
+            timetable.setLocationLink(location.name, location.url);
+          }
+          if (location.info) {
+            timetable.setLocationInfo(location.name, location.info);
+          }
+        });
+
+        data.events.forEach(function(event) {
+          timetable.addEvent(event.name, event.location, new Date(event.start), new Date(event.end), {
+            url: '#' + getEventInfoId(event),
+            registered: event.registered,
+            capacity: event.capacity === null ? undefined : event.capacity,
+            class: findMyBooking(event.id) ? 'is-mine' : undefined
+          });
+        });
+
+        // Reuse the renderer (it owns the current-time timer) and keep the scroll position.
+        var scrollLeft = null;
+        if (timetableRenderer === null) {
+          timetableRenderer = new Timetable.Renderer(timetable);
+        } else {
+          timetableRenderer.timetable = timetable;
+          scrollLeft = timetableRenderer.scrollNode.scrollLeft;
+        }
+        timetableRenderer.draw('.timetable');
+        if (scrollLeft !== null) {
+          timetableRenderer.scrollNode.scrollLeft = scrollLeft;
+        }
+
+        if (document.querySelector('.location-info article') === null) {
+          document.querySelector('.location-info').textContent = 'No location information available.';
+        }
+      }
+
+      // Ids of the location entries the plugin rendered, by location name.
+      function getLocationInfoIds() {
+        var ids = {};
+        data.locations.forEach(function(location, index) {
+          var id = 'location-info-' + index;
+          if (document.getElementById(id) !== null) {
+            ids[location.name] = id;
+          }
+        });
+        return ids;
+      }
+
+      function locationLink(locationName, locationInfoIds) {
+        if (!locationInfoIds[locationName]) {
+          return document.createTextNode(locationName);
+        }
+        var link = el('a', null, locationName);
+        link.href = '#' + locationInfoIds[locationName];
+        return link;
+      }
+
+      /* ------------------------------------------------------------------
+       * Event info tab
+       * ------------------------------------------------------------------ */
+
+      function renderEventInfo(locationInfoIds) {
         var list = document.querySelector('.event-info-list');
         list.textContent = '';
 
-        var sorted = events
-          .map(function(event, index) { return { event: event, index: index }; })
+        data.events
+          .slice()
+          .sort(function(a, b) { return new Date(a.start) - new Date(b.start); })
+          .forEach(function(event) {
+            var article = list.appendChild(el('article'));
+            article.id = getEventInfoId(event);
+            article.dataset.start = new Date(event.start).getTime();
+            article.dataset.end = new Date(event.end).getTime();
+
+            article.appendChild(el('h2', null, event.name));
+            article.appendChild(el('p', 'event-meta',
+              formatTimeRange(new Date(event.start), new Date(event.end)) + ' · ',
+              locationLink(event.location, locationInfoIds)));
+
+            var registration = article.appendChild(el('p', 'event-registration'));
+            if (event.capacity !== null) {
+              var full = event.registered >= event.capacity;
+              registration.textContent = event.registered + ' of ' + event.capacity + ' registered' +
+                (full ? ' (full)' : ', ' + (event.capacity - event.registered) + ' places left');
+            } else {
+              registration.textContent = event.registered + ' registered';
+            }
+
+            if (event.attendees.length > 0) {
+              var attendees = article.appendChild(el('ul', 'event-attendees', el('li', 'attendees-label', 'Who’s coming:')));
+              event.attendees.forEach(function(name) {
+                attendees.appendChild(el('li', null, name));
+              });
+            }
+
+            if (event.info) {
+              article.appendChild(el('p', null, event.info));
+            }
+            if (event.url) {
+              var urlLink = el('a', null, '> Event website');
+              urlLink.href = event.url;
+              article.appendChild(el('p', null, urlLink));
+            }
+
+            article.appendChild(renderEventActions(event));
+          });
+
+        updateEventTimes();
+      }
+
+      function renderEventActions(event) {
+        var actions = el('div', 'event-actions');
+        var myBooking = findMyBooking(event.id);
+        var confirmation = confirmations[event.id];
+
+        if (myBooking !== null) {
+          var editLink = el('a', null, 'Change or cancel');
+          editLink.href = '#my-booking-' + myBooking.id;
+          actions.appendChild(el('p', null,
+            el('span', 'registered-badge', '✓ You’re registered as ' + myBooking.name), ' ', editLink));
+          if (confirmation) {
+            actions.appendChild(renderConfirmation(confirmation));
+          }
+          return actions;
+        }
+
+        if (isPast(event)) {
+          return actions;
+        }
+
+        var full = event.capacity !== null && event.registered >= event.capacity;
+        if (openFormEventId === event.id && !full) {
+          actions.appendChild(renderBookingForm(event));
+        } else {
+          var addButton = button(full ? 'Full' : '+ Add me', 'button add-me-button', function() {
+            openFormEventId = event.id;
+            var form = renderBookingForm(event);
+            actions.replaceChild(form, addButton);
+            form.querySelector('input').focus();
+          });
+          addButton.disabled = full;
+          actions.appendChild(addButton);
+        }
+        return actions;
+      }
+
+      function renderBookingForm(event) {
+        var contact = loadContact();
+        var form = el('form', 'booking-form');
+        form.noValidate = true;
+
+        var nameInput = el('input');
+        nameInput.name = 'name';
+        nameInput.required = true;
+        nameInput.maxLength = 80;
+        nameInput.autocomplete = 'name';
+        nameInput.value = contact.name;
+
+        var emailInput = el('input');
+        emailInput.name = 'email';
+        emailInput.type = 'email';
+        emailInput.required = true;
+        emailInput.maxLength = 254;
+        emailInput.autocomplete = 'email';
+        emailInput.value = contact.email;
+
+        var submit = el('button', 'button', 'Register');
+        submit.type = 'submit';
+        var message = el('div', 'form-message is-error');
+        message.setAttribute('role', 'alert');
+        message.hidden = true;
+
+        form.appendChild(el('label', null, 'Name (shown to others)', nameInput));
+        form.appendChild(el('label', null, 'Email address (not shown; we send your edit link here)', emailInput));
+        form.appendChild(el('div', 'form-buttons', submit, button('Cancel', 'button button-secondary', function() {
+          openFormEventId = null;
+          renderAll();
+        })));
+        form.appendChild(message);
+
+        function showMessage(parts) {
+          message.textContent = '';
+          parts.forEach(function(part) {
+            message.appendChild(typeof part === 'string' ? document.createTextNode(part) : part);
+          });
+          message.hidden = false;
+        }
+
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var name = nameInput.value.trim();
+          var email = emailInput.value.trim();
+          if (name === '') {
+            showMessage(['Please enter your name.']);
+            return;
+          }
+          if (email === '' || !emailInput.checkValidity()) {
+            showMessage(['Please enter a valid email address.']);
+            return;
+          }
+
+          submit.disabled = true;
+          api('book', { eventId: event.id, name: name, email: email })
+            .then(function(result) {
+              submit.disabled = false;
+              if (result.ok) {
+                saveContact(name, email);
+                openFormEventId = null;
+                confirmations[event.id] = {
+                  editLink: result.data.editLink,
+                  mailSent: result.data.mailSent,
+                  email: email
+                };
+                return reload();
+              }
+              var error = result.data.error;
+              if (error === 'already_booked') {
+                showMessage(['This email address is already registered for this event. ', renderResendButton(event, email, showMessage)]);
+              } else if (error === 'event_full') {
+                showMessage(['Sorry, this event has just filled up.']);
+                return reload();
+              } else if (error === 'invalid_name') {
+                showMessage(['Please enter a name of at most 80 characters.']);
+              } else if (error === 'invalid_email') {
+                showMessage(['Please enter a valid email address.']);
+              } else {
+                showMessage(['Registration failed. Please try again later.']);
+              }
+            }, function() {
+              submit.disabled = false;
+              showMessage(['Could not reach the server. Please try again.']);
+            });
+        });
+
+        return form;
+      }
+
+      function renderResendButton(event, email, showMessage) {
+        var resend = button('Send me the edit link again', 'link-button', function() {
+          resend.disabled = true;
+          api('resend', { eventId: event.id, email: email }).then(function(result) {
+            if (result.ok) {
+              showMessage(['If ' + email + ' is registered for this event, we’ve sent a new edit link there. ' +
+                'Please also check your spam folder.']);
+            } else {
+              resend.disabled = false;
+              showMessage(['The link could not be sent. Please try again later.']);
+            }
+          }, function() {
+            resend.disabled = false;
+            showMessage(['Could not reach the server. Please try again.']);
+          });
+        });
+        return resend;
+      }
+
+      function renderConfirmation(confirmation) {
+        var input = el('input');
+        input.readOnly = true;
+        input.value = confirmation.editLink;
+        input.setAttribute('aria-label', 'Your edit link');
+
+        var copy = button('Copy', 'button button-secondary', function() {
+          input.select();
+          var copied = navigator.clipboard ?
+            navigator.clipboard.writeText(input.value) :
+            Promise.reject(new Error('Clipboard not available'));
+          copied.then(function() {
+            copy.textContent = 'Copied';
+          }, function() {
+            copy.textContent = 'Press Ctrl+C';
+          });
+        });
+
+        return el('div', 'booking-confirmation',
+          el('p', null, el('strong', null, 'Thanks for registering!'),
+            ' With this link you can change or cancel your registration later, also on another device:'),
+          el('div', 'edit-link-row', input, copy),
+          el('p', 'hint', confirmation.mailSent ?
+            'We also sent the link to ' + confirmation.email + '.' :
+            'We could not send this link by email, so please save it now.'));
+      }
+
+      /* ------------------------------------------------------------------
+       * My events tab
+       * ------------------------------------------------------------------ */
+
+      function renderMyEvents(locationInfoIds) {
+        var list = document.querySelector('.my-event-list');
+        list.textContent = '';
+
+        var count = document.getElementById('my-events-count');
+        count.textContent = String(myBookings.length);
+        count.hidden = myBookings.length === 0;
+
+        var entries = myBookings
+          .map(function(booking) { return { booking: booking, event: findEvent(booking.eventId) }; })
+          .filter(function(entry) { return entry.event !== null; })
           .sort(function(a, b) { return new Date(a.event.start) - new Date(b.event.start); });
 
-        sorted.forEach(function(entry) {
+        if (entries.length === 0) {
+          list.appendChild(el('p', null, 'You haven’t registered for any events in this browser yet.'));
+          list.appendChild(el('p', 'hint',
+            'Registered somewhere else? Open the link from your confirmation email: all your registrations ' +
+            'made with that email address will then show up here.'));
+          return;
+        }
+
+        entries.forEach(function(entry) {
+          var booking = entry.booking;
           var event = entry.event;
-          var article = list.appendChild(document.createElement('article'));
-          article.id = getEventInfoId(entry.index);
+          var article = list.appendChild(el('article'));
+          article.id = 'my-booking-' + booking.id;
           article.dataset.start = new Date(event.start).getTime();
           article.dataset.end = new Date(event.end).getTime();
 
-          article.appendChild(document.createElement('h2')).textContent = event.name;
+          var eventLink = el('a', null, event.name);
+          eventLink.href = '#' + getEventInfoId(event);
+          article.appendChild(el('h2', null, eventLink));
+          article.appendChild(el('p', 'event-meta',
+            formatTimeRange(new Date(event.start), new Date(event.end)) + ' · ',
+            locationLink(event.location, locationInfoIds)));
 
-          var meta = article.appendChild(document.createElement('p'));
-          meta.className = 'event-meta';
-          meta.appendChild(document.createTextNode(formatTimeRange(new Date(event.start), new Date(event.end)) + ' · '));
-          if (locationInfoIds[event.location]) {
-            var locationLink = meta.appendChild(document.createElement('a'));
-            locationLink.href = '#' + locationInfoIds[event.location];
-            locationLink.textContent = event.location;
+          if (editingBookingId === booking.id) {
+            article.appendChild(renderNameForm(booking));
           } else {
-            meta.appendChild(document.createTextNode(event.location));
+            article.appendChild(el('p', null, 'Registered as ', el('strong', null, booking.name), ' (' + booking.email + ')'));
           }
 
-          if (typeof event.registered === 'number' && typeof event.capacity === 'number' && event.capacity > 0) {
-            var registration = article.appendChild(document.createElement('p'));
-            registration.className = 'event-registration';
-            var full = event.registered >= event.capacity;
-            registration.textContent = event.registered + ' of ' + event.capacity + ' registered' +
-              (full ? ' (full)' : ', ' + (event.capacity - event.registered) + ' places left');
+          var confirmation = confirmations[event.id];
+          if (confirmation) {
+            article.appendChild(renderConfirmation(confirmation));
           }
 
-          if (event.info) {
-            article.appendChild(document.createElement('p')).textContent = event.info;
-          }
-
-          if (event.url) {
-            var urlLink = article.appendChild(document.createElement('p')).appendChild(document.createElement('a'));
-            urlLink.href = event.url;
-            urlLink.textContent = '> Event website';
+          if (editingBookingId !== booking.id) {
+            article.appendChild(el('div', 'my-event-actions',
+              button('Change name', 'link-button', function() {
+                editingBookingId = booking.id;
+                renderAll();
+                document.querySelector('#my-booking-' + booking.id + ' input').focus();
+              }),
+              button('Cancel registration', 'link-button', function() {
+                if (!window.confirm('Cancel your registration for “' + event.name + '”?')) {
+                  return;
+                }
+                api('cancel', { bookingId: booking.id }).then(function(result) {
+                  if (!result.ok) {
+                    showNotice('The registration could not be cancelled. Please try again.', true);
+                    return;
+                  }
+                  delete confirmations[event.id];
+                  showNotice('Your registration for “' + event.name + '” has been cancelled.', false);
+                  return reload();
+                }, function() {
+                  showNotice('Could not reach the server. Please try again.', true);
+                });
+              })));
           }
         });
 
-        updateEventInfoTimes();
+        updateEventTimes();
       }
 
-      // Marks entries on the Event info tab as past or ongoing.
-      function updateEventInfoTimes() {
-        var now = Date.now();
-        document.querySelectorAll('.event-info-list article').forEach(function(article) {
-          var isPast = Number(article.dataset.end) <= now;
-          article.classList.toggle('is-past', isPast);
-          article.classList.toggle('is-current', !isPast && Number(article.dataset.start) <= now);
+      function renderNameForm(booking) {
+        var input = el('input');
+        input.required = true;
+        input.maxLength = 80;
+        input.value = booking.name;
+        var save = el('button', 'button', 'Save');
+        save.type = 'submit';
+
+        var form = el('form', 'inline-name-form',
+          el('label', null, 'Name', input),
+          save,
+          button('Cancel', 'button button-secondary', function() {
+            editingBookingId = null;
+            renderAll();
+          }));
+
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          if (input.value.trim() === '') {
+            input.focus();
+            return;
+          }
+          save.disabled = true;
+          api('update', { bookingId: booking.id, name: input.value.trim() }).then(function(result) {
+            save.disabled = false;
+            if (!result.ok) {
+              showNotice(result.data.error === 'invalid_name' ?
+                'Please enter a name of at most 80 characters.' :
+                'The name could not be changed. Please try again.', true);
+              return;
+            }
+            editingBookingId = null;
+            return reload();
+          }, function() {
+            save.disabled = false;
+            showNotice('Could not reach the server. Please try again.', true);
+          });
+        });
+        return form;
+      }
+
+      /* ------------------------------------------------------------------
+       * Loading
+       * ------------------------------------------------------------------ */
+
+      function renderAll() {
+        renderTimetable();
+        var locationInfoIds = getLocationInfoIds();
+        renderEventInfo(locationInfoIds);
+        renderMyEvents(locationInfoIds);
+        // Re-rendering replaced the highlighted node; mark the new one.
+        var id = decodeURIComponent(window.location.hash.slice(1));
+        var target = id ? document.getElementById(id) : null;
+        if (target !== null && !target.classList.contains('tab-panel')) {
+          target.classList.add('is-highlighted');
+        }
+      }
+
+      function reload() {
+        return Promise.all([api('events'), api('my')]).then(function(results) {
+          if (!results[0].ok || !results[1].ok) {
+            throw new Error('Could not load timetable data');
+          }
+          data = results[0].data;
+          myBookings = results[1].data.bookings;
+          renderAll();
         });
       }
-      setInterval(updateEventInfoTimes, Timetable.NOW_UPDATE_INTERVAL);
 
-      Promise.all([
-        fetch('api/location.json'),
-        fetch('api/events.json')
-      ])
-        .then(function(responses) {
-          responses.forEach(function(response) {
-            if (!response.ok) {
-              throw new Error('Could not load timetable data');
-            }
-          });
-          return Promise.all(responses.map(function(response) {
-            return response.json();
-          }));
-        })
-        .then(function(data) {
-          var locations = data[0];
-          var events = data[1];
+      // Opens an edit link (index.htm?booking=TOKEN): links the booking, or for
+      // links from emails all bookings of that address, to this browser.
+      function openBookingLink() {
+        var params = new URLSearchParams(window.location.search);
+        var token = params.get('booking');
+        if (token === null) {
+          return Promise.resolve(null);
+        }
+        // Remove the token from the address bar (and history) once it is used.
+        params.delete('booking');
+        var query = params.toString();
+        window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
 
-          var timetable = new Timetable();
-
-          timetable.setScope(9, 2);
-          timetable.setLocationInfoContainer('.location-info');
-          timetable.addLocations(locations.map(function(location) {
-            return location.name;
-          }));
-
-          locations.forEach(function(location) {
-            if (location.url) {
-              timetable.setLocationLink(location.name, location.url);
-            }
-            if (location.info) {
-              timetable.setLocationInfo(location.name, location.info);
-            }
-          });
-
-          events.forEach(function(event, index) {
-            timetable.addEvent(
-              event.name,
-              event.location,
-              new Date(event.start),
-              new Date(event.end),
-              {
-                url: '#' + getEventInfoId(index),
-                registered: event.registered,
-                capacity: event.capacity
-              }
-            );
-          });
-
-          timetableRenderer = new Timetable.Renderer(timetable);
-          timetableRenderer.draw('.timetable');
-
-          if (document.querySelector('.location-info article') === null) {
-            document.querySelector('.location-info').textContent = 'No location information available.';
+        return api('open', { token: token }).then(function(result) {
+          if (!result.ok) {
+            showNotice('This edit link is not valid (anymore). If the registration was cancelled, it no longer exists.', true);
+            return null;
           }
-          // Link event locations to whichever location entries the plugin rendered.
-          var locationInfoIds = {};
-          locations.forEach(function(location, index) {
-            var id = 'location-info-' + index;
-            if (document.getElementById(id) !== null) {
-              locationInfoIds[location.name] = id;
-            }
-          });
-          renderEventInfo(events, locationInfoIds);
+          showNotice(result.data.emailLinked ?
+            'All your registrations with this email address are now shown under “My events” in this browser.' :
+            'This registration is now shown under “My events” in this browser.', false);
+          return result.data.bookingId;
+        }, function() {
+          showNotice('Could not reach the server to open the edit link. Please reload the page.', true);
+          return null;
+        });
+      }
 
-          // The data just arrived, so a deep link like #event-info-3 can now be resolved.
-          showTabForHash();
+      openBookingLink()
+        .then(function(bookingId) {
+          return reload().then(function() {
+            if (bookingId !== null && document.getElementById('my-booking-' + bookingId) !== null) {
+              window.location.hash = 'my-booking-' + bookingId;
+            }
+            // The data just arrived, so deep links like #event-ID can now be resolved.
+            showTabForHash();
+          });
         })
         .catch(function(error) {
           document.querySelector('.timetable').textContent = error.message;

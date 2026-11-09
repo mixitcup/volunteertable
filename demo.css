@@ -54,104 +54,13 @@ a {
 }
 
 .tab-panel[hidden] {
-  display: none;
-}
-
-.event-info-list article,
-.location-info-list article {
-  margin-bottom: 24px;
-  padding: 8px 12px;
-  border-left: 3px solid transparent;
-  transition: 600ms background-color;
-}
-
-.event-info-list h2 {
-  margin: 0 0 8px;
-}
-
-.event-info-list p {
-  margin: 0 0 8px;
-}
-
-.event-meta {
-  color: #666;
-}
-
-.event-info-list article.is-highlighted,
-.location-info-list article.is-highlighted {
-  background-color: #FDF0EF;
-  border-left-color: #EC6A5E;
-}
-
-.location-event-list {
-  list-style: none;
-  margin: 0 0 8px;
-  padding: 0;
-}
-
-.location-event-list li {
-  margin-bottom: 4px;
-}
-
-.location-event-time {
-  display: inline-block;
-  min-width: 7.5em;
-  color: #666;
-  font-variant-numeric: tabular-nums;
-}
-
-.location-event-registration {
-  color: #666;
-}
-
-[hidden] {
   display: none !important;
 }
 
-.auth {
-  display: flex;
-  justify-content: center;
-  padding: 20px 0;
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 440px;
-  padding: 24px;
-  border: 1px solid #E5E5E5;
-  border-radius: 6px;
-  background-color: #FAFAFA;
-}
-
-.auth-card h2 {
-  margin: 0 0 8px;
-}
-
-.auth-card label {
-  display: block;
-  margin-bottom: 14px;
-  font-weight: 500;
-}
-
-.auth-card input {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 4px;
-  padding: 8px 10px;
-  border: 1px solid #CCC;
-  border-radius: 4px;
-  font: inherit;
-}
-
-.auth-card input:focus {
-  outline: 2px solid #EC6A5E;
-  outline-offset: -1px;
-  border-color: #EC6A5E;
-}
+/* Buttons */
 
 .button {
-  padding: 9px 18px;
+  padding: 7px 16px;
   border: 1px solid #DF2E1E;
   border-radius: 4px;
   background-color: #EC6A5E;
@@ -194,43 +103,209 @@ a {
   cursor: default;
 }
 
-.auth-message {
-  margin-top: 14px;
+/* Messages */
+
+.notice,
+.form-message {
   padding: 10px 12px;
   border-radius: 4px;
   background-color: #EEF6EE;
   border-left: 3px solid #4C9A4C;
 }
 
-.auth-message.is-error {
+.notice {
+  margin-bottom: 16px;
+}
+
+.form-message {
+  margin-top: 10px;
+}
+
+.notice.is-error,
+.form-message.is-error {
   background-color: #FDF0EF;
   border-left-color: #EC6A5E;
 }
 
-.auth-hint {
-  margin: 14px 0 0;
+.hint {
+  margin: 8px 0 0;
   font-size: 0.9em;
   color: #666;
 }
 
-.login-link-row {
+/* Attendees and booking actions on the Event info tab */
+
+.event-attendees {
   display: flex;
-  gap: 8px;
-  margin: 12px 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
 }
 
-.login-link-row input {
+.event-attendees li {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: #EFEFEF;
+  font-size: 0.9em;
+}
+
+.event-attendees .attendees-label {
+  padding: 0;
+  margin-right: 4px;
+  background: none;
+  color: #666;
+}
+
+.event-actions {
+  margin: 10px 0 8px;
+}
+
+.add-me-button {
+  font-weight: 700;
+}
+
+.registered-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background-color: #EEF6EE;
+  color: #2E7D32;
+  font-weight: 500;
+}
+
+.booking-form {
+  max-width: 440px;
+  padding: 14px 16px;
+  border: 1px solid #E5E5E5;
+  border-radius: 6px;
+  background-color: #FAFAFA;
+}
+
+.booking-form label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.booking-form input,
+.edit-link-row input,
+.inline-name-form input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 7px 10px;
+  border: 1px solid #CCC;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.booking-form input:focus,
+.inline-name-form input:focus {
+  outline: 2px solid #EC6A5E;
+  outline-offset: -1px;
+  border-color: #EC6A5E;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.booking-confirmation {
+  max-width: 560px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background-color: #EEF6EE;
+  border-left: 3px solid #4C9A4C;
+}
+
+.booking-confirmation p {
+  margin: 0 0 8px;
+}
+
+.edit-link-row {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.edit-link-row input {
   flex: 1 1 auto;
   margin-top: 0;
   font-family: monospace;
   font-size: 0.85em;
+  background-color: white;
 }
 
-.user-bar {
-  margin-bottom: 12px;
-  text-align: right;
-  font-size: 0.9em;
-  color: #666;
+/* My events tab */
+
+.tab-count {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background-color: #EC6A5E;
+  color: white;
+  font-size: 0.75em;
+  line-height: 1.5em;
+  text-align: center;
+}
+
+.my-event-list article {
+  margin-bottom: 20px;
+  padding: 8px 12px;
+  border-left: 3px solid #EC6A5E;
+  transition: 600ms background-color;
+}
+
+.my-event-list article.is-past {
+  border-left-color: #CCC;
+  color: #999;
+}
+
+.my-event-list article.is-highlighted {
+  background-color: #FDF0EF;
+}
+
+.my-event-list h2 {
+  margin: 0 0 6px;
+  font-size: 1.2em;
+}
+
+.my-event-list p {
+  margin: 0 0 6px;
+}
+
+.my-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.inline-name-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 440px;
+  margin: 6px 0;
+}
+
+.inline-name-form label {
+  flex: 1 1 200px;
+}
+
+/* Your own events in the timetable */
+
+.timetable .time-entry.is-mine small::before {
+  content: '✓ ';
+  font-weight: 700;
 }
 
 .event-info-list article.is-past {
