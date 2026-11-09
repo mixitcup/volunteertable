@@ -713,6 +713,29 @@
         });
       }
 
+      function removeUser(user) {
+        var count = user.bookings.length;
+        var name = user.names.join(' / ');
+        if (!window.confirm('Remove ' + name + ' (' + user.email + ') entirely?\n\n' +
+            'This deletes all ' + count + (count === 1 ? ' registration' : ' registrations') +
+            ' made with this email address. It cannot be undone.')) {
+          return;
+        }
+        api('admin_remove_user', { email: user.email }).then(function(result) {
+          if (!result.ok) {
+            showNotice(result.status === 403 ?
+              'You are no longer logged in as admin in this browser.' :
+              'This person could not be removed. Please try again.', true);
+            return reload();
+          }
+          showNotice(name + ' has been removed, with ' + result.data.removed +
+            (result.data.removed === 1 ? ' registration.' : ' registrations.'), false);
+          return reload();
+        }, function() {
+          showNotice('Could not reach the server. Please try again.', true);
+        });
+      }
+
       function renderAdminSetup() {
         var setup = document.getElementById('admin-setup');
         var done = document.getElementById('admin-setup-done');
@@ -825,8 +848,11 @@
         var list = panel.appendChild(el('div', 'admin-user-list'));
         adminUsers.forEach(function(user) {
           var article = list.appendChild(el('article', 'admin-user'));
-          article.appendChild(el('h2', null, user.names.join(' / '), ' ',
-            el('span', 'admin-user-email', user.email)));
+          article.appendChild(el('div', 'admin-user-header',
+            el('h2', null, user.names.join(' / '), ' ', el('span', 'admin-user-email', user.email)),
+            button('Remove user', 'button button-secondary admin-remove-user', function() {
+              removeUser(user);
+            })));
 
           var bookings = article.appendChild(el('ul', 'admin-booking-list'));
           var searchText = [user.email].concat(user.names);

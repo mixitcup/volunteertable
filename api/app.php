@@ -20,6 +20,7 @@ declare(strict_types=1);
  *   POST app.php?action=admin_login  { token }       -> { admin } | 404 invalid_link
  *   GET  app.php?action=admin_users                  -> { users: [{ email, names, bookings }] }
  *   POST app.php?action=admin_remove { bookingId }   -> { ok }
+ *   POST app.php?action=admin_remove_user { email }  -> { removed }  all registrations of that address
  *
  * POST bodies must be JSON, which also protects against cross-site form posts.
  * Email addresses are only returned for this browser's own bookings and to admins.
@@ -350,6 +351,28 @@ try {
             }
             vt_delete_booking($bookingId);
             respond(200, ['ok' => true]);
+
+        case 'admin_remove_user':
+            require_admin();
+            $email = $input['email'] ?? null;
+            if (!is_string($email) || trim($email) === '') {
+                respond(400, ['error' => 'invalid_email']);
+            }
+            $emailKey = vt_email_key(trim($email));
+            $removed = vt_transaction(function () use ($emailKey) {
+                $bookingIds = vt_query('SELECT id FROM vt_bookings WHERE email_key = ?', [$emailKey])->fetchAll(PDO::FETCH_COLUMN);
+                foreach ($bookingIds as $bookingId) {
+                    vt_query('DELETE FROM vt_session_bookings WHERE booking_id = ?', [$bookingId]);
+                }
+                vt_query('DELETE FROM vt_bookings WHERE email_key = ?', [$emailKey]);
+                // Browsers linked to the address via an emailed link forget it as well.
+                vt_query('DELETE FROM vt_session_emails WHERE email_key = ?', [$emailKey]);
+                return count($bookingIds);
+            });
+            if ($removed === 0) {
+                respond(404, ['error' => 'unknown_user']);
+            }
+            respond(200, ['removed' => $removed]);
 
         case 'resend':
             $eventId = is_string($input['eventId'] ?? null) ? $input['eventId'] : '';

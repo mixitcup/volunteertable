@@ -443,3 +443,16 @@ a {
 .admin-user[hidden] {
   display: none;
 }
+
+.admin-user-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.admin-remove-user {
+  padding: 3px 10px;
+  font-size: 0.85em;
+}
