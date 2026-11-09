@@ -21,6 +21,11 @@ declare(strict_types=1);
  *   GET  app.php?action=admin_users                  -> { users: [{ email, names, bookings }] }
  *   POST app.php?action=admin_remove { bookingId }   -> { ok }
  *   POST app.php?action=admin_remove_user { email }  -> { removed }  all registrations of that address
+ *   POST app.php?action=admin_save_location { id?, name, url, info }  -> { id }  creates without id
+ *   POST app.php?action=admin_delete_location { id } -> { ok } | 409 location_has_events
+ *   POST app.php?action=admin_save_event { id?, name, locationId, start, end, capacity, info, url } -> { id }
+ *                                      start/end as "YYYY-MM-DDTHH:MM"; capacity null = unlimited
+ *   POST app.php?action=admin_delete_event { id }    -> { removedRegistrations }
  *
  * POST bodies must be JSON, which also protects against cross-site form posts.
  * Email addresses are only returned for this browser's own bookings and to admins.
@@ -62,11 +67,12 @@ function list_events(): array
 {
     $locations = array_map(function (array $location) {
         return [
+            'id' => $location['id'],
             'name' => $location['name'],
             'url' => $location['url'],
             'info' => $location['info'],
         ];
-    }, vt_query('SELECT name, url, info FROM vt_locations ORDER BY sort_order, name')->fetchAll());
+    }, vt_query('SELECT id, name, url, info FROM vt_locations ORDER BY sort_order, name')->fetchAll());
 
     $attendees = [];
     foreach (vt_query('SELECT event_id, name FROM vt_bookings ORDER BY created_at, name')->fetchAll() as $booking) {
@@ -79,6 +85,7 @@ function list_events(): array
             'id' => $event['id'],
             'name' => $event['name'],
             'location' => $event['location_name'],
+            'locationId' => $event['location_id'],
             'start' => $event['starts_at'],
             'end' => $event['ends_at'],
             'capacity' => $event['capacity'] === null ? null : (int) $event['capacity'],
@@ -140,6 +147,56 @@ function list_users(): array
         return strcasecmp($a['names'][0], $b['names'][0]) ?: strcasecmp($a['email'], $b['email']);
     });
     return $users;
+}
+
+/* Validation for the admin's location and event forms. Each returns the clean value or responds with an error. */
+
+function input_name(array $input, string $key): string
+{
+    $name = vt_normalize_name($input[$key] ?? null);
+    if ($name === null) {
+        respond(400, ['error' => 'invalid_name', 'field' => $key]);
+    }
+    return $name;
+}
+
+function input_text(array $input, string $key, int $maxLength): ?string
+{
+    $value = $input[$key] ?? null;
+    if ($value === null) {
+        return null;
+    }
+    if (!is_string($value) || preg_match('//u', $value) !== 1 || strlen($value) > $maxLength) {
+        respond(400, ['error' => 'invalid_text', 'field' => $key]);
+    }
+    $value = trim(str_replace("\r\n", "\n", $value));
+    return $value === '' ? null : $value;
+}
+
+/** Web links: http(s), mailto, or a relative link such as "#" or "/page". Never javascript: etc. */
+function input_url(array $input, string $key): ?string
+{
+    $url = input_text($input, $key, 2000);
+    if ($url === null) {
+        return null;
+    }
+    if (preg_match('/\s/', $url) === 1
+        || (preg_match('/^([a-z][a-z0-9+.-]*):/i', $url, $match) === 1
+            && !in_array(strtolower($match[1]), ['http', 'https', 'mailto'], true))) {
+        respond(400, ['error' => 'invalid_url', 'field' => $key]);
+    }
+    return $url;
+}
+
+/** Local date and time as "YYYY-MM-DDTHH:MM" (from a datetime-local input), stored with seconds. */
+function input_datetime(array $input, string $key): string
+{
+    $value = $input[$key] ?? null;
+    $date = is_string($value) ? DateTime::createFromFormat('!Y-m-d\TH:i', substr($value, 0, 16)) : false;
+    if ($date === false || $date->format('Y-m-d\TH:i') !== substr($value, 0, 16)) {
+        respond(400, ['error' => 'invalid_datetime', 'field' => $key]);
+    }
+    return $date->format('Y-m-d\TH:i:s');
 }
 
 function require_own_booking(array $input): string
@@ -373,6 +430,136 @@ try {
                 respond(404, ['error' => 'unknown_user']);
             }
             respond(200, ['removed' => $removed]);
+
+        case 'admin_save_location':
+            require_admin();
+            $id = $input['id'] ?? null;
+            $location = [
+                'name' => input_name($input, 'name'),
+                'url' => input_url($input, 'url'),
+                'info' => input_text($input, 'info', 5000),
+            ];
+            $result = vt_transaction(function () use ($id, $location) {
+                // Location names identify rows in the timetable, so they must be unique.
+                foreach (vt_query('SELECT id, name FROM vt_locations')->fetchAll() as $other) {
+                    if ($other['id'] !== $id && strcasecmp($other['name'], $location['name']) === 0) {
+                        return ['error' => 'name_taken'];
+                    }
+                }
+                if ($id === null) {
+                    $id = vt_new_id();
+                    $order = (int) vt_query('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM vt_locations')->fetchColumn();
+                    vt_query(
+                        'INSERT INTO vt_locations (id, name, url, info, sort_order) VALUES (?, ?, ?, ?, ?)',
+                        [$id, $location['name'], $location['url'], $location['info'], $order]
+                    );
+                    return ['id' => $id];
+                }
+                if (!is_string($id) || vt_query('SELECT 1 FROM vt_locations WHERE id = ?', [$id])->fetchColumn() === false) {
+                    return ['error' => 'unknown_location'];
+                }
+                vt_query(
+                    'UPDATE vt_locations SET name = ?, url = ?, info = ? WHERE id = ?',
+                    [$location['name'], $location['url'], $location['info'], $id]
+                );
+                return ['id' => $id];
+            });
+            if (isset($result['error'])) {
+                respond($result['error'] === 'unknown_location' ? 404 : 409, $result);
+            }
+            respond($id === null ? 201 : 200, $result);
+
+        case 'admin_delete_location':
+            require_admin();
+            $id = $input['id'] ?? null;
+            $result = vt_transaction(function () use ($id) {
+                if (!is_string($id) || vt_query('SELECT 1 FROM vt_locations WHERE id = ?', [$id])->fetchColumn() === false) {
+                    return 'unknown_location';
+                }
+                // Events are never deleted as a side effect; they have to be moved or deleted first.
+                if (vt_query('SELECT 1 FROM vt_events WHERE location_id = ?', [$id])->fetchColumn() !== false) {
+                    return 'location_has_events';
+                }
+                vt_query('DELETE FROM vt_locations WHERE id = ?', [$id]);
+                return null;
+            });
+            if ($result !== null) {
+                respond($result === 'unknown_location' ? 404 : 409, ['error' => $result]);
+            }
+            respond(200, ['ok' => true]);
+
+        case 'admin_save_event':
+            require_admin();
+            $id = $input['id'] ?? null;
+            $event = [
+                'name' => input_name($input, 'name'),
+                'location_id' => is_string($input['locationId'] ?? null) ? $input['locationId'] : '',
+                'starts_at' => input_datetime($input, 'start'),
+                'ends_at' => input_datetime($input, 'end'),
+                'info' => input_text($input, 'info', 5000),
+                'url' => input_url($input, 'url'),
+                'capacity' => $input['capacity'] ?? null,
+            ];
+            if ($event['ends_at'] <= $event['starts_at']) {
+                respond(400, ['error' => 'end_before_start', 'field' => 'end']);
+            }
+            if ($event['capacity'] !== null && (!is_int($event['capacity']) || $event['capacity'] < 1 || $event['capacity'] > 100000)) {
+                respond(400, ['error' => 'invalid_capacity', 'field' => 'capacity']);
+            }
+
+            $result = vt_transaction(function () use ($id, $event) {
+                if (vt_query('SELECT 1 FROM vt_locations WHERE id = ?', [$event['location_id']])->fetchColumn() === false) {
+                    return ['error' => 'unknown_location', 'field' => 'locationId'];
+                }
+                $values = [$event['name'], $event['location_id'], $event['starts_at'], $event['ends_at'],
+                    $event['capacity'], $event['info'], $event['url']];
+                if ($id === null) {
+                    $id = vt_new_id();
+                    vt_query(
+                        'INSERT INTO vt_events (name, location_id, starts_at, ends_at, capacity, info, url, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                        array_merge($values, [$id])
+                    );
+                    return ['id' => $id];
+                }
+                if (!is_string($id) || find_event($id, true) === null) {
+                    return ['error' => 'unknown_event'];
+                }
+                // Lowering the capacity below the number of registrations would make
+                // "places left" negative; people have to be removed first.
+                $registered = (int) vt_query('SELECT COUNT(*) FROM vt_bookings WHERE event_id = ?', [$id])->fetchColumn();
+                if ($event['capacity'] !== null && $event['capacity'] < $registered) {
+                    return ['error' => 'capacity_below_registrations', 'field' => 'capacity', 'registered' => $registered];
+                }
+                vt_query(
+                    'UPDATE vt_events SET name = ?, location_id = ?, starts_at = ?, ends_at = ?, capacity = ?, info = ?, url = ? WHERE id = ?',
+                    array_merge($values, [$id])
+                );
+                return ['id' => $id];
+            });
+            if (isset($result['error'])) {
+                respond($result['error'] === 'unknown_event' ? 404 : 409, $result);
+            }
+            respond($id === null ? 201 : 200, $result);
+
+        case 'admin_delete_event':
+            require_admin();
+            $id = $input['id'] ?? null;
+            $removed = vt_transaction(function () use ($id) {
+                if (!is_string($id) || find_event($id, true) === null) {
+                    return null;
+                }
+                $bookingIds = vt_query('SELECT id FROM vt_bookings WHERE event_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN);
+                foreach ($bookingIds as $bookingId) {
+                    vt_query('DELETE FROM vt_session_bookings WHERE booking_id = ?', [$bookingId]);
+                }
+                vt_query('DELETE FROM vt_bookings WHERE event_id = ?', [$id]);
+                vt_query('DELETE FROM vt_events WHERE id = ?', [$id]);
+                return count($bookingIds);
+            });
+            if ($removed === null) {
+                respond(404, ['error' => 'unknown_event']);
+            }
+            respond(200, ['removedRegistrations' => $removed]);
 
         case 'resend':
             $eventId = is_string($input['eventId'] ?? null) ? $input['eventId'] : '';

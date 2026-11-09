@@ -53,10 +53,12 @@
     </section>
 
     <section id="locations-tab" class="tab-panel" role="tabpanel" hidden>
+      <div class="location-admin" hidden></div>
       <div class="location-info"></div>
     </section>
 
     <section id="events-tab" class="tab-panel" role="tabpanel" hidden>
+      <div class="admin-bar" id="event-admin-bar" hidden></div>
       <div class="event-info-list"></div>
     </section>
 
@@ -67,6 +69,19 @@
     <section id="admin-tab" class="tab-panel" role="tabpanel" hidden>
       <div class="admin-panel"></div>
     </section>
+
+    <!-- Form for adding and editing locations and events (admins only). -->
+    <dialog id="editor" class="editor-dialog" aria-labelledby="editor-title">
+      <form method="dialog" novalidate>
+        <h2 id="editor-title"></h2>
+        <div class="editor-fields"></div>
+        <div class="form-message is-error" role="alert" hidden></div>
+        <div class="form-buttons">
+          <button type="submit" class="button" value="save">Save</button>
+          <button type="button" class="button button-secondary js-editor-cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="timetablejs/plugin.js"></script>
 
@@ -336,7 +351,12 @@
             article.dataset.start = new Date(event.start).getTime();
             article.dataset.end = new Date(event.end).getTime();
 
-            article.appendChild(el('h2', null, event.name));
+            var heading = article.appendChild(el('h2', null, event.name));
+            if (admin !== null) {
+              heading.appendChild(button('Edit', 'button button-secondary admin-edit-button', function() {
+                openEventEditor(event);
+              }));
+            }
             article.appendChild(el('p', 'event-meta',
               formatTimeRange(new Date(event.start), new Date(event.end)) + ' · ',
               locationLink(event.location, locationInfoIds)));
@@ -736,6 +756,272 @@
         });
       }
 
+      /* Editing locations and events --------------------------------------- */
+
+      var FIELD_ERRORS = {
+        invalid_name: 'Please enter a name of at most 80 characters.',
+        name_taken: 'There already is a location with this name.',
+        invalid_text: 'This text is too long.',
+        invalid_url: 'Please enter a web address starting with https:// (or leave it empty).',
+        invalid_datetime: 'Please enter a valid date and time.',
+        end_before_start: 'The end must be after the start.',
+        invalid_capacity: 'Please enter a whole number of at least 1, or leave it empty for no limit.',
+        unknown_location: 'Please choose a location.'
+      };
+
+      /*
+       * Opens the editor dialog. fields: [{ key, label, type, value, options, required, hint }],
+       * save(values) returns an api() promise; on success the data is reloaded.
+       */
+      function openEditor(title, fields, save, extraButton) {
+        var dialog = document.getElementById('editor');
+        var form = dialog.querySelector('form');
+        var container = dialog.querySelector('.editor-fields');
+        var message = dialog.querySelector('.form-message');
+        var saveButton = form.querySelector('button[value="save"]');
+        var inputs = {};
+
+        document.getElementById('editor-title').textContent = title;
+        container.textContent = '';
+        message.hidden = true;
+
+        fields.forEach(function(field) {
+          var input;
+          if (field.type === 'select') {
+            input = el('select');
+            field.options.forEach(function(option) {
+              var optionNode = input.appendChild(el('option', null, option.label));
+              optionNode.value = option.value;
+            });
+          } else if (field.type === 'textarea') {
+            input = el('textarea');
+            input.rows = 4;
+          } else {
+            input = el('input');
+            input.type = field.type || 'text';
+          }
+          input.name = field.key;
+          input.value = field.value === null || field.value === undefined ? '' : String(field.value);
+          input.required = Boolean(field.required);
+          if (field.type === 'number') {
+            input.min = 1;
+            input.step = 1;
+          }
+          inputs[field.key] = input;
+          var label = el('label', null, field.label + (field.required ? '' : ' (optional)'), input);
+          if (field.hint) {
+            label.appendChild(el('span', 'field-hint', field.hint));
+          }
+          container.appendChild(label);
+        });
+
+        var oldExtra = form.querySelector('.js-editor-extra');
+        if (oldExtra) {
+          oldExtra.remove();
+        }
+        if (extraButton) {
+          extraButton.classList.add('js-editor-extra');
+          form.querySelector('.form-buttons').appendChild(extraButton);
+        }
+
+        function showError(text, fieldKey) {
+          message.textContent = text;
+          message.hidden = false;
+          if (fieldKey && inputs[fieldKey]) {
+            inputs[fieldKey].focus();
+          }
+        }
+
+        form.onsubmit = function(e) {
+          e.preventDefault();
+          var values = {};
+          Object.keys(inputs).forEach(function(key) {
+            values[key] = inputs[key].value;
+          });
+          saveButton.disabled = true;
+          save(values).then(function(result) {
+            saveButton.disabled = false;
+            if (result.ok) {
+              dialog.close();
+              return reload();
+            }
+            var error = result.data.error;
+            if (error === 'capacity_below_registrations') {
+              showError(result.data.registered + ' people are already registered. Remove some of them first, ' +
+                'or choose a capacity of at least ' + result.data.registered + '.', 'capacity');
+            } else if (result.status === 403) {
+              showError('You are no longer logged in as admin in this browser.');
+            } else {
+              showError(FIELD_ERRORS[error] || 'Saving failed. Please try again.', result.data.field);
+            }
+          }, function() {
+            saveButton.disabled = false;
+            showError('Could not reach the server. Please try again.');
+          });
+        };
+        form.querySelector('.js-editor-cancel').onclick = function() {
+          dialog.close();
+        };
+
+        dialog.showModal();
+        var first = container.querySelector('input, select, textarea');
+        if (first) {
+          first.focus();
+        }
+        return { close: function() { dialog.close(); }, showError: showError };
+      }
+
+      // "2026-11-09T09:30:00" -> "2026-11-09T09:30", the format of datetime-local inputs.
+      function toInputDateTime(value) {
+        return value ? value.slice(0, 16) : '';
+      }
+
+      function openEventEditor(event) {
+        if (data.locations.length === 0) {
+          showNotice('Please add a location first.', true);
+          return;
+        }
+        var isNew = event === null;
+        // New events start on the next full hour by default.
+        var start = new Date();
+        start.setMinutes(0, 0, 0);
+        start.setHours(start.getHours() + 1);
+        var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+        var local = function(d) {
+          return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' +
+            pad(d.getHours()) + ':' + pad(d.getMinutes());
+        };
+
+        var deleteButton = null;
+        if (!isNew) {
+          deleteButton = button('Delete event', 'link-button editor-delete', function() {
+            var count = event.registered;
+            if (!window.confirm('Delete “' + event.name + '”?' + (count > 0 ?
+                '\n\nThis also deletes its ' + count + (count === 1 ? ' registration' : ' registrations') +
+                '. The people are not notified.' : '') + '\n\nThis cannot be undone.')) {
+              return;
+            }
+            api('admin_delete_event', { id: event.id }).then(function(result) {
+              if (!result.ok) {
+                editor.showError('The event could not be deleted. Please try again.');
+                return;
+              }
+              editor.close();
+              showNotice('“' + event.name + '” has been deleted.', false);
+              return reload();
+            }, function() {
+              editor.showError('Could not reach the server. Please try again.');
+            });
+          });
+        }
+
+        var editor = openEditor(isNew ? 'Add event' : 'Edit event', [
+          { key: 'name', label: 'Name', required: true, value: isNew ? '' : event.name },
+          {
+            key: 'locationId', label: 'Location', type: 'select', required: true,
+            value: isNew ? data.locations[0].id : event.locationId,
+            options: data.locations.map(function(location) { return { value: location.id, label: location.name }; })
+          },
+          { key: 'start', label: 'Start', type: 'datetime-local', required: true,
+            value: isNew ? local(start) : toInputDateTime(event.start) },
+          { key: 'end', label: 'End', type: 'datetime-local', required: true,
+            value: isNew ? local(new Date(start.getTime() + 3600000)) : toInputDateTime(event.end) },
+          { key: 'capacity', label: 'Maximum number of people', type: 'number',
+            value: isNew ? '' : event.capacity, hint: 'Leave empty for no limit.' },
+          { key: 'info', label: 'Description', type: 'textarea', value: isNew ? '' : event.info },
+          { key: 'url', label: 'Website', type: 'url', value: isNew ? '' : event.url }
+        ], function(values) {
+          var capacity = values.capacity.trim();
+          return api('admin_save_event', {
+            id: isNew ? null : event.id,
+            name: values.name,
+            locationId: values.locationId,
+            start: values.start,
+            end: values.end,
+            // Non-numbers are sent as text so the server reports them as invalid.
+            capacity: capacity === '' ? null : (/^\d+$/.test(capacity) ? Number(capacity) : capacity),
+            info: values.info,
+            url: values.url
+          });
+        }, deleteButton);
+      }
+
+      function openLocationEditor(location) {
+        var isNew = location === null;
+        var deleteButton = null;
+        if (!isNew) {
+          deleteButton = button('Delete location', 'link-button editor-delete', function() {
+            var eventCount = data.events.filter(function(event) { return event.locationId === location.id; }).length;
+            if (eventCount > 0) {
+              editor.showError('This location still has ' + eventCount + (eventCount === 1 ? ' event' : ' events') +
+                '. Move them to another location or delete them first.');
+              return;
+            }
+            if (!window.confirm('Delete the location “' + location.name + '”?')) {
+              return;
+            }
+            api('admin_delete_location', { id: location.id }).then(function(result) {
+              if (!result.ok) {
+                editor.showError(result.data.error === 'location_has_events' ?
+                  'This location still has events. Move them to another location or delete them first.' :
+                  'The location could not be deleted. Please try again.');
+                return;
+              }
+              editor.close();
+              showNotice('The location “' + location.name + '” has been deleted.', false);
+              return reload();
+            }, function() {
+              editor.showError('Could not reach the server. Please try again.');
+            });
+          });
+        }
+
+        var editor = openEditor(isNew ? 'Add location' : 'Edit location', [
+          { key: 'name', label: 'Name', required: true, value: isNew ? '' : location.name },
+          { key: 'url', label: 'Map or website link', type: 'url', value: isNew ? '' : location.url },
+          { key: 'info', label: 'Information', type: 'textarea', value: isNew ? '' : location.info,
+            hint: 'E.g. where volunteers check in.' }
+        ], function(values) {
+          return api('admin_save_location', {
+            id: isNew ? null : location.id,
+            name: values.name,
+            url: values.url,
+            info: values.info
+          });
+        }, deleteButton);
+      }
+
+      function renderContentAdmin() {
+        var bar = document.getElementById('event-admin-bar');
+        var locationAdmin = document.querySelector('.location-admin');
+        bar.textContent = '';
+        locationAdmin.textContent = '';
+        bar.hidden = admin === null;
+        locationAdmin.hidden = admin === null;
+        if (admin === null) {
+          return;
+        }
+
+        bar.appendChild(button('+ Add event', 'button', function() {
+          openEventEditor(null);
+        }));
+
+        locationAdmin.appendChild(el('h2', null, 'Manage locations'));
+        var list = locationAdmin.appendChild(el('ul', 'location-admin-list'));
+        data.locations.forEach(function(location) {
+          var eventCount = data.events.filter(function(event) { return event.locationId === location.id; }).length;
+          list.appendChild(el('li', null,
+            el('span', 'location-admin-name', location.name),
+            el('span', 'hint', eventCount + (eventCount === 1 ? ' event' : ' events')),
+            button('Edit', 'button button-secondary admin-edit-button', function() {
+              openLocationEditor(location);
+            })));
+        });
+        locationAdmin.appendChild(button('+ Add location', 'button', function() {
+          openLocationEditor(null);
+        }));
+      }
+
       function renderAdminSetup() {
         var setup = document.getElementById('admin-setup');
         var done = document.getElementById('admin-setup-done');
@@ -917,6 +1203,7 @@
         renderEventInfo(locationInfoIds);
         renderMyEvents(locationInfoIds);
         renderAdminPanel(locationInfoIds);
+        renderContentAdmin();
         renderAdminSetup();
         // Re-rendering replaced the highlighted node; mark the new one.
         var id = decodeURIComponent(window.location.hash.slice(1));
