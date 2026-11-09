@@ -18,11 +18,34 @@
 
     <div id="notice" class="notice" role="status" hidden></div>
 
+    <!-- Shown to the first visitor, as long as nobody manages the page yet. -->
+    <section id="admin-setup" class="admin-setup" hidden>
+      <form id="admin-setup-form" class="booking-form" novalidate>
+        <h2>Welcome! You’re the first one here.</h2>
+        <p>Nobody manages this volunteer table yet. Enter your name and email address to become its admin:
+          you’ll be able to see everyone who registered and remove people from events.</p>
+        <label>
+          Name
+          <input name="name" type="text" required maxlength="80" autocomplete="name">
+        </label>
+        <label>
+          Email address (we send your admin link here)
+          <input name="email" type="email" required maxlength="254" autocomplete="email">
+        </label>
+        <div class="form-buttons">
+          <button type="submit" class="button">Become admin</button>
+        </div>
+        <div class="form-message is-error" role="alert" hidden></div>
+      </form>
+      <div id="admin-setup-done" class="booking-confirmation" hidden></div>
+    </section>
+
     <nav class="tabs" role="tablist">
       <a href="#timetable-tab" role="tab" aria-controls="timetable-tab">Timetable</a>
       <a href="#locations-tab" role="tab" aria-controls="locations-tab">Locations</a>
       <a href="#events-tab" role="tab" aria-controls="events-tab">Events</a>
       <a href="#my-events-tab" role="tab" aria-controls="my-events-tab">My events<span class="tab-count" id="my-events-count" hidden></span></a>
+      <a href="#admin-tab" role="tab" aria-controls="admin-tab" id="admin-tab-link" hidden>Admin</a>
     </nav>
 
     <section id="timetable-tab" class="tab-panel" role="tabpanel">
@@ -41,6 +64,10 @@
       <div class="my-event-list"></div>
     </section>
 
+    <section id="admin-tab" class="tab-panel" role="tabpanel" hidden>
+      <div class="admin-panel"></div>
+    </section>
+
     <script src="timetablejs/plugin.js"></script>
 
     <script>
@@ -49,6 +76,9 @@
 
       var data = { locations: [], events: [] };
       var myBookings = [];
+      var adminExists = true;
+      var admin = null;        // the admin logged in in this browser, if any
+      var adminUsers = [];     // all registered people (only loaded for admins)
       var timetableRenderer = null;
       var timetableScrolledToNow = false;
       // UI state that survives re-rendering after each change.
@@ -75,7 +105,7 @@
         var id = decodeURIComponent(window.location.hash.slice(1));
         var target = id ? document.getElementById(id) : null;
         var panel = target ? target.closest('.tab-panel') : null;
-        if (panel === null) {
+        if (panel === null || (panel.id === 'admin-tab' && admin === null)) {
           panel = document.getElementById(DEFAULT_TAB);
           target = null;
         }
@@ -322,9 +352,21 @@
 
             if (event.attendees.length > 0) {
               var attendees = article.appendChild(el('ul', 'event-attendees', el('li', 'attendees-label', 'Who’s coming:')));
-              event.attendees.forEach(function(name) {
-                attendees.appendChild(el('li', null, name));
-              });
+              if (admin !== null) {
+                // Admins see who is behind each name and can remove people.
+                getAdminBookings(event.id).forEach(function(booking) {
+                  var chip = attendees.appendChild(el('li', 'is-removable', booking.name,
+                    button('×', 'remove-chip-button', function() {
+                      removeBooking(booking, event);
+                    })));
+                  chip.title = booking.email;
+                  chip.lastChild.setAttribute('aria-label', 'Remove ' + booking.name + ' from this event');
+                });
+              } else {
+                event.attendees.forEach(function(name) {
+                  attendees.appendChild(el('li', null, name));
+                });
+              }
             }
 
             if (event.info) {
@@ -637,6 +679,209 @@
       }
 
       /* ------------------------------------------------------------------
+       * Admin
+       * ------------------------------------------------------------------ */
+
+      // All bookings for an event, with email addresses (admins only).
+      function getAdminBookings(eventId) {
+        var bookings = [];
+        adminUsers.forEach(function(user) {
+          user.bookings.forEach(function(booking) {
+            if (booking.eventId === eventId) {
+              bookings.push({ id: booking.id, name: booking.name, email: user.email, created: booking.created });
+            }
+          });
+        });
+        return bookings.sort(function(a, b) { return a.created - b.created; });
+      }
+
+      function removeBooking(booking, event) {
+        if (!window.confirm('Remove ' + booking.name + ' (' + booking.email + ') from “' + event.name + '”?')) {
+          return;
+        }
+        api('admin_remove', { bookingId: booking.id }).then(function(result) {
+          if (!result.ok) {
+            showNotice(result.status === 403 ?
+              'You are no longer logged in as admin in this browser.' :
+              'The registration could not be removed. Please try again.', true);
+            return reload();
+          }
+          showNotice(booking.name + ' has been removed from “' + event.name + '”.', false);
+          return reload();
+        }, function() {
+          showNotice('Could not reach the server. Please try again.', true);
+        });
+      }
+
+      function renderAdminSetup() {
+        var setup = document.getElementById('admin-setup');
+        var done = document.getElementById('admin-setup-done');
+        // Keep the section while it shows the new admin their link.
+        setup.hidden = adminExists && done.hidden;
+      }
+
+      function initAdminSetupForm() {
+        var form = document.getElementById('admin-setup-form');
+        var message = form.querySelector('.form-message');
+        var submit = form.querySelector('button[type="submit"]');
+
+        function showMessage(text) {
+          message.textContent = text;
+          message.hidden = false;
+        }
+
+        var contact = loadContact();
+        form.elements.name.value = contact.name;
+        form.elements.email.value = contact.email;
+
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var name = form.elements.name.value.trim();
+          var email = form.elements.email.value.trim();
+          if (name === '') {
+            showMessage('Please enter your name.');
+            return;
+          }
+          if (email === '' || !form.elements.email.checkValidity()) {
+            showMessage('Please enter a valid email address.');
+            return;
+          }
+
+          submit.disabled = true;
+          api('claim_admin', { name: name, email: email }).then(function(result) {
+            submit.disabled = false;
+            if (result.ok) {
+              saveContact(name, email);
+              form.hidden = true;
+              showAdminLink(result.data);
+              return reload();
+            }
+            if (result.data.error === 'admin_exists') {
+              showMessage('Someone else has just become admin.');
+              return reload();
+            }
+            showMessage(result.data.error === 'invalid_name' ? 'Please enter a name of at most 80 characters.' :
+              result.data.error === 'invalid_email' ? 'Please enter a valid email address.' :
+              'Something went wrong. Please try again later.');
+          }, function() {
+            submit.disabled = false;
+            showMessage('Could not reach the server. Please try again.');
+          });
+        });
+      }
+
+      function showAdminLink(result) {
+        var done = document.getElementById('admin-setup-done');
+        var input = el('input');
+        input.readOnly = true;
+        input.value = result.adminLink;
+        input.setAttribute('aria-label', 'Your admin link');
+        var copy = button('Copy', 'button button-secondary', function() {
+          input.select();
+          var copied = navigator.clipboard ?
+            navigator.clipboard.writeText(input.value) :
+            Promise.reject(new Error('Clipboard not available'));
+          copied.then(function() { copy.textContent = 'Copied'; }, function() { copy.textContent = 'Press Ctrl+C'; });
+        });
+
+        done.textContent = '';
+        done.appendChild(el('p', null, el('strong', null, 'You’re now the admin, ' + result.admin.name + '!'),
+          ' You stay logged in as admin in this browser. To log in on another device or browser, use this link:'));
+        done.appendChild(el('div', 'edit-link-row', input, copy));
+        done.appendChild(el('p', 'hint', result.mailSent ?
+          'We also sent the link to ' + result.admin.email + '. Keep it safe: anyone with it can manage all registrations.' :
+          'We could not send this link by email, so please save it now. Anyone with it can manage all registrations.'));
+        done.appendChild(el('p', null, button('Done', 'button', function() {
+          done.hidden = true;
+          renderAdminSetup();
+        })));
+        done.hidden = false;
+      }
+
+      function renderAdminPanel(locationInfoIds) {
+        document.getElementById('admin-tab-link').hidden = admin === null;
+        var panel = document.querySelector('.admin-panel');
+        panel.textContent = '';
+        if (admin === null) {
+          return;
+        }
+
+        var bookingCount = adminUsers.reduce(function(sum, user) { return sum + user.bookings.length; }, 0);
+        panel.appendChild(el('p', 'hint', 'Logged in as admin: ' + admin.name + ' (' + admin.email + ') · ' +
+          adminUsers.length + (adminUsers.length === 1 ? ' person' : ' people') + ', ' +
+          bookingCount + (bookingCount === 1 ? ' registration' : ' registrations')));
+
+        if (adminUsers.length === 0) {
+          panel.appendChild(el('p', null, 'Nobody has registered for an event yet.'));
+          return;
+        }
+
+        var filter = el('input', 'admin-filter');
+        filter.type = 'search';
+        filter.placeholder = 'Filter by name, email or event…';
+        filter.setAttribute('aria-label', 'Filter people');
+        panel.appendChild(filter);
+
+        var list = panel.appendChild(el('div', 'admin-user-list'));
+        adminUsers.forEach(function(user) {
+          var article = list.appendChild(el('article', 'admin-user'));
+          article.appendChild(el('h2', null, user.names.join(' / '), ' ',
+            el('span', 'admin-user-email', user.email)));
+
+          var bookings = article.appendChild(el('ul', 'admin-booking-list'));
+          var searchText = [user.email].concat(user.names);
+          user.bookings.forEach(function(booking) {
+            var event = findEvent(booking.eventId);
+            if (event === null) {
+              return;
+            }
+            searchText.push(event.name);
+            var eventLink = el('a', null, event.name);
+            eventLink.href = '#' + getEventInfoId(event);
+            var item = bookings.appendChild(el('li', null,
+              el('span', 'location-event-time', formatTimeRange(new Date(event.start), new Date(event.end))), ' ',
+              eventLink, ' · ', locationLink(event.location, locationInfoIds),
+              user.names.length > 1 ? ' (as ' + booking.name + ')' : null,
+              ' ',
+              button('Remove', 'link-button', function() {
+                removeBooking({ id: booking.id, name: booking.name, email: user.email }, event);
+              })));
+            item.classList.toggle('is-past', new Date(event.end).getTime() <= Date.now());
+          });
+          article.dataset.search = searchText.join(' ').toLowerCase();
+        });
+
+        filter.addEventListener('input', function() {
+          var query = filter.value.trim().toLowerCase();
+          list.querySelectorAll('.admin-user').forEach(function(article) {
+            article.hidden = query !== '' && article.dataset.search.indexOf(query) === -1;
+          });
+        });
+      }
+
+      // Opens an admin login link (index.htm?admin=TOKEN).
+      function openAdminLink() {
+        var params = new URLSearchParams(window.location.search);
+        var token = params.get('admin');
+        if (token === null) {
+          return Promise.resolve();
+        }
+        params.delete('admin');
+        var query = params.toString();
+        window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+
+        return api('admin_login', { token: token }).then(function(result) {
+          if (result.ok) {
+            showNotice('You are now logged in as admin in this browser.', false);
+          } else {
+            showNotice('This admin link is not valid.', true);
+          }
+        }, function() {
+          showNotice('Could not reach the server to open the admin link. Please reload the page.', true);
+        });
+      }
+
+      /* ------------------------------------------------------------------
        * Loading
        * ------------------------------------------------------------------ */
 
@@ -645,6 +890,8 @@
         var locationInfoIds = getLocationInfoIds();
         renderEventInfo(locationInfoIds);
         renderMyEvents(locationInfoIds);
+        renderAdminPanel(locationInfoIds);
+        renderAdminSetup();
         // Re-rendering replaced the highlighted node; mark the new one.
         var id = decodeURIComponent(window.location.hash.slice(1));
         var target = id ? document.getElementById(id) : null;
@@ -660,7 +907,21 @@
           }
           data = results[0].data;
           myBookings = results[1].data.bookings;
+          adminExists = results[1].data.adminExists;
+          admin = results[1].data.admin;
+          if (admin === null) {
+            adminUsers = [];
+            return;
+          }
+          return api('admin_users').then(function(result) {
+            adminUsers = result.ok ? result.data.users : [];
+          });
+        }).then(function() {
           renderAll();
+          // If the admin tab was open but this browser is no longer admin, fall back.
+          if (admin === null && !document.getElementById('admin-tab').hidden) {
+            showTabForHash();
+          }
         });
       }
 
@@ -692,7 +953,10 @@
         });
       }
 
-      openBookingLink()
+      initAdminSetupForm();
+
+      openAdminLink()
+        .then(openBookingLink)
         .then(function(bookingId) {
           return reload().then(function() {
             if (bookingId !== null && document.getElementById('my-booking-' + bookingId) !== null) {

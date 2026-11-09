@@ -350,3 +350,96 @@ a {
   background-color: #D32F2F;
   color: white;
 }
+
+/* Admin */
+
+.admin-setup {
+  margin-bottom: 20px;
+}
+
+.admin-setup .booking-form {
+  max-width: 560px;
+  border-color: #EC6A5E;
+  background-color: #FDF0EF;
+}
+
+.admin-setup h2 {
+  margin: 0 0 8px;
+}
+
+.event-attendees li.is-removable {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 2px;
+}
+
+.remove-chip-button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #999;
+  font: inherit;
+  font-weight: 700;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.remove-chip-button:hover,
+.remove-chip-button:focus-visible {
+  background-color: #EC6A5E;
+  color: white;
+}
+
+.admin-filter {
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  box-sizing: border-box;
+  margin: 8px 0 16px;
+  padding: 7px 10px;
+  border: 1px solid #CCC;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.admin-user {
+  margin-bottom: 18px;
+  padding: 8px 12px;
+  border-left: 3px solid #E5E5E5;
+}
+
+.admin-user h2 {
+  margin: 0 0 6px;
+  font-size: 1.1em;
+}
+
+.admin-user-email {
+  font-size: 0.85em;
+  font-weight: normal;
+  color: #666;
+}
+
+.admin-booking-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-booking-list li {
+  margin-bottom: 4px;
+}
+
+.admin-booking-list li.is-past {
+  color: #999;
+}
+
+/* Elements with their own display value still need to disappear when hidden. */
+.tab-count[hidden],
+.event-attendees li[hidden],
+.admin-user[hidden] {
+  display: none;
+}

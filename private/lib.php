@@ -279,16 +279,55 @@ function vt_session_owns_booking(?string $session, string $bookingId): bool
     return false;
 }
 
+function vt_delete_booking(string $bookingId): void
+{
+    vt_transaction(function () use ($bookingId) {
+        vt_query('DELETE FROM vt_session_bookings WHERE booking_id = ?', [$bookingId]);
+        vt_query('DELETE FROM vt_bookings WHERE id = ?', [$bookingId]);
+    });
+}
+
+/* ---------------------------------------------------------------------------
+ * Admins
+ * ------------------------------------------------------------------------- */
+
+function vt_admin_exists(): bool
+{
+    return vt_query('SELECT 1 FROM vt_admins')->fetchColumn() !== false;
+}
+
+/** The admin logged in in this browser, or null. */
+function vt_session_admin(?string $session): ?array
+{
+    if ($session === null) {
+        return null;
+    }
+    $admin = vt_query(
+        'SELECT a.id, a.name, a.email FROM vt_session_admins sa JOIN vt_admins a ON a.id = sa.admin_id
+         WHERE sa.session_hash = ?',
+        [$session]
+    )->fetch();
+    return $admin === false ? null : $admin;
+}
+
+/** Logs the admin in in this browser. */
+function vt_login_admin(string $adminId): void
+{
+    $session = vt_session(true);
+    vt_query('DELETE FROM vt_session_admins WHERE session_hash = ?', [$session]);
+    vt_query('INSERT INTO vt_session_admins (session_hash, admin_id) VALUES (?, ?)', [$session, $adminId]);
+}
+
 /* ---------------------------------------------------------------------------
  * Links and mail
  * ------------------------------------------------------------------------- */
 
 /**
- * Edit link for a booking token. Links in emails must use the configured
- * base_url: a URL derived from the request's Host header could be forged to
- * send someone's token to another server.
+ * Link to the page with the given query and hash. Links in emails must use
+ * the configured base_url: a URL derived from the request's Host header could
+ * be forged to send someone's token to another server.
  */
-function vt_edit_link(string $token, bool $forEmail): ?string
+function vt_site_link(string $queryAndHash, bool $forEmail): ?string
 {
     $base = rtrim((string) vt_config()['base_url'], '/');
     if ($base === '') {
@@ -298,7 +337,59 @@ function vt_edit_link(string $token, bool $forEmail): ?string
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $base = (vt_is_https() ? 'https' : 'http') . '://' . $host . rtrim(vt_site_path(), '/');
     }
-    return $base . '/index.htm?booking=' . $token . '#my-events-tab';
+    return $base . '/index.htm' . $queryAndHash;
+}
+
+/** Edit link for a booking token. */
+function vt_edit_link(string $token, bool $forEmail): ?string
+{
+    return vt_site_link('?booking=' . $token . '#my-events-tab', $forEmail);
+}
+
+/** Login link for an admin token. */
+function vt_admin_link(string $token, bool $forEmail): ?string
+{
+    return vt_site_link('?admin=' . $token . '#admin-tab', $forEmail);
+}
+
+/** Sends a plain-text mail (or logs it if no SMTP server is configured). Throws on failure. */
+function vt_send_mail(string $toEmail, string $toName, string $subject, string $body): void
+{
+    $config = vt_config();
+    if ($config['smtp'] === null) {
+        // No SMTP configured: log instead of sending, for local testing.
+        error_log("[volunteertable] Mail to {$toEmail}: {$subject}\n{$body}");
+        return;
+    }
+    if (vt_normalize_email($config['mail_from']) === null) {
+        throw new RuntimeException('mail_from must be configured to send mails');
+    }
+
+    vt_smtp_send(
+        $config['smtp'],
+        $config['mail_from'],
+        (string) $config['mail_from_name'],
+        $toEmail,
+        $toName,
+        $subject,
+        $body
+    );
+}
+
+/** Sends the admin their login link. Throws on failure. */
+function vt_send_admin_mail(array $admin, string $token): void
+{
+    $link = vt_admin_link($token, true);
+    if ($link === null) {
+        throw new RuntimeException('base_url must be configured to send mails');
+    }
+
+    vt_send_mail($admin['email'], $admin['name'], 'Your admin link for the volunteer table',
+        "Hello {$admin['name']},\n\n"
+        . "you are now the admin of the volunteer table. To log in as admin, also on\n"
+        . "another device or browser, open this link:\n\n"
+        . "{$link}\n\n"
+        . "Anyone with this link can manage all registrations, so please keep it safe.\n");
 }
 
 function vt_format_event_time(array $event): string
@@ -315,7 +406,6 @@ function vt_format_event_time(array $event): string
 /** Sends the confirmation with the edit link. Throws on failure. */
 function vt_send_booking_mail(array $booking, array $event, string $mailToken): void
 {
-    $config = vt_config();
     $link = vt_edit_link($mailToken, true);
     if ($link === null) {
         throw new RuntimeException('base_url must be configured to send mails');
@@ -333,22 +423,5 @@ function vt_send_booking_mail(array $booking, array $event, string $mailToken): 
         . "address under \"My events\" in that browser.\n"
         . "Anyone with this link can change your registration, so please don't share it.\n";
 
-    if ($config['smtp'] === null) {
-        // No SMTP configured: log instead of sending, for local testing.
-        error_log("[volunteertable] Mail to {$booking['email']}:\n{$body}");
-        return;
-    }
-    if (vt_normalize_email($config['mail_from']) === null) {
-        throw new RuntimeException('mail_from must be configured to send mails');
-    }
-
-    vt_smtp_send(
-        $config['smtp'],
-        $config['mail_from'],
-        (string) $config['mail_from_name'],
-        $booking['email'],
-        $booking['name'],
-        $subject,
-        $body
-    );
+    vt_send_mail($booking['email'], $booking['name'], $subject, $body);
 }

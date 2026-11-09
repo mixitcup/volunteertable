@@ -70,16 +70,40 @@ function vt_schema_statements(string $driver): array
             email_key VARCHAR(254) NOT NULL,
             PRIMARY KEY (session_hash, email_key)
         )' . $options,
+
+        // Admins log in on further browsers with the link from their mail.
+        'CREATE TABLE IF NOT EXISTS vt_admins (
+            id VARCHAR(32) NOT NULL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(254) NOT NULL,
+            login_token_hash CHAR(64) NOT NULL UNIQUE,
+            created_at BIGINT NOT NULL
+        )' . $options,
+
+        // Browsers in which an admin is logged in.
+        'CREATE TABLE IF NOT EXISTS vt_session_admins (
+            session_hash CHAR(64) NOT NULL PRIMARY KEY REFERENCES vt_sessions (id_hash),
+            admin_id VARCHAR(32) NOT NULL REFERENCES vt_admins (id)
+        )' . $options,
+
+        // One-off flags. The unique name makes sure that e.g. only one
+        // visitor can become the first admin, even with simultaneous requests.
+        'CREATE TABLE IF NOT EXISTS vt_settings (
+            name VARCHAR(64) NOT NULL PRIMARY KEY,
+            value VARCHAR(255) NOT NULL
+        )' . $options,
     ];
 }
 
 function vt_ensure_schema(PDO $db): void
 {
+    // Checks the most recently added table; all statements are "IF NOT EXISTS",
+    // so databases created by an older version just get the missing tables.
     try {
-        $db->query('SELECT 1 FROM vt_session_emails WHERE 1 = 0');
+        $db->query('SELECT 1 FROM vt_settings WHERE 1 = 0');
         return;
     } catch (PDOException $e) {
-        // Tables don't exist yet: create them below.
+        // Tables missing: create them below.
     }
 
     foreach (vt_schema_statements((string) $db->getAttribute(PDO::ATTR_DRIVER_NAME)) as $statement) {

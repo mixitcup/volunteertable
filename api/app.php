@@ -5,7 +5,8 @@ declare(strict_types=1);
  * Volunteer table API
  *
  *   GET  app.php?action=events  -> { locations: [...], events: [...] }  (with attendee names)
- *   GET  app.php?action=my      -> { bookings: [...] }  bookings belonging to this browser
+ *   GET  app.php?action=my      -> { bookings: [...], adminExists, admin: {name, email} | null }
+ *                                  bookings belonging to this browser, and whether an admin is logged in
  *   POST app.php?action=book    { eventId, name, email } -> { booking, editLink, mailSent }
  *                                 | 409 already_booked | 409 event_full | 404 unknown_event
  *   POST app.php?action=open    { token }            -> { bookingId, emailLinked } | 404 invalid_link
@@ -13,8 +14,15 @@ declare(strict_types=1);
  *   POST app.php?action=cancel  { bookingId }        -> { ok }
  *   POST app.php?action=resend  { eventId, email }   -> { ok }
  *
+ * Admin:
+ *   POST app.php?action=claim_admin  { name, email } -> { admin, adminLink, mailSent } | 409 admin_exists
+ *                                      only works while there is no admin yet
+ *   POST app.php?action=admin_login  { token }       -> { admin } | 404 invalid_link
+ *   GET  app.php?action=admin_users                  -> { users: [{ email, names, bookings }] }
+ *   POST app.php?action=admin_remove { bookingId }   -> { ok }
+ *
  * POST bodies must be JSON, which also protects against cross-site form posts.
- * Email addresses are only ever returned for this browser's own bookings.
+ * Email addresses are only returned for this browser's own bookings and to admins.
  */
 
 require __DIR__ . '/../private/lib.php';
@@ -86,6 +94,53 @@ function list_events(): array
     return ['locations' => $locations, 'events' => $events];
 }
 
+function public_admin(?array $admin): ?array
+{
+    return $admin === null ? null : ['name' => $admin['name'], 'email' => $admin['email']];
+}
+
+function require_admin(): array
+{
+    $admin = vt_session_admin(vt_session(false));
+    if ($admin === null) {
+        respond(403, ['error' => 'admin_required']);
+    }
+    return $admin;
+}
+
+/** Everyone who registered, grouped by email address, with their bookings. */
+function list_users(): array
+{
+    $rows = vt_query(
+        'SELECT b.id, b.event_id, b.name, b.email, b.email_key, b.created_at
+         FROM vt_bookings b JOIN vt_events e ON e.id = b.event_id
+         ORDER BY e.starts_at, e.name'
+    )->fetchAll();
+
+    $users = [];
+    foreach ($rows as $row) {
+        $key = $row['email_key'];
+        if (!isset($users[$key])) {
+            $users[$key] = ['email' => $row['email'], 'names' => [], 'bookings' => []];
+        }
+        if (!in_array($row['name'], $users[$key]['names'], true)) {
+            $users[$key]['names'][] = $row['name'];
+        }
+        $users[$key]['bookings'][] = [
+            'id' => $row['id'],
+            'eventId' => $row['event_id'],
+            'name' => $row['name'],
+            'created' => (int) $row['created_at'],
+        ];
+    }
+
+    $users = array_values($users);
+    usort($users, function (array $a, array $b) {
+        return strcasecmp($a['names'][0], $b['names'][0]) ?: strcasecmp($a['email'], $b['email']);
+    });
+    return $users;
+}
+
 function require_own_booking(array $input): string
 {
     $bookingId = $input['bookingId'] ?? null;
@@ -104,7 +159,16 @@ try {
             respond(200, list_events());
         }
         if ($action === 'my') {
-            respond(200, ['bookings' => array_map('public_booking', vt_session_bookings(vt_session(false)))]);
+            $session = vt_session(false);
+            respond(200, [
+                'bookings' => array_map('public_booking', vt_session_bookings($session)),
+                'adminExists' => vt_admin_exists(),
+                'admin' => public_admin(vt_session_admin($session)),
+            ]);
+        }
+        if ($action === 'admin_users') {
+            require_admin();
+            respond(200, ['users' => list_users()]);
         }
         respond(404, ['error' => 'unknown_action']);
     }
@@ -219,11 +283,72 @@ try {
             respond(200, ['booking' => public_booking($booking)]);
 
         case 'cancel':
-            $bookingId = require_own_booking($input);
-            vt_transaction(function () use ($bookingId) {
-                vt_query('DELETE FROM vt_session_bookings WHERE booking_id = ?', [$bookingId]);
-                vt_query('DELETE FROM vt_bookings WHERE id = ?', [$bookingId]);
-            });
+            vt_delete_booking(require_own_booking($input));
+            respond(200, ['ok' => true]);
+
+        case 'claim_admin':
+            $name = vt_normalize_name($input['name'] ?? null);
+            $email = vt_normalize_email($input['email'] ?? null);
+            if ($name === null) {
+                respond(400, ['error' => 'invalid_name']);
+            }
+            if ($email === null) {
+                respond(400, ['error' => 'invalid_email']);
+            }
+
+            $token = vt_new_token();
+            $admin = ['id' => vt_new_id(), 'name' => $name, 'email' => $email];
+            try {
+                vt_transaction(function () use ($admin, $token) {
+                    if (vt_admin_exists()) {
+                        throw new DomainException('admin_exists');
+                    }
+                    // Fails with a duplicate key if another visitor claimed it at the same moment.
+                    vt_query("INSERT INTO vt_settings (name, value) VALUES ('first_admin', ?)", [$admin['id']]);
+                    vt_query(
+                        'INSERT INTO vt_admins (id, name, email, login_token_hash, created_at) VALUES (?, ?, ?, ?, ?)',
+                        [$admin['id'], $admin['name'], $admin['email'], vt_hash_token($token), time()]
+                    );
+                });
+            } catch (DomainException | PDOException $e) {
+                if ($e instanceof DomainException || vt_admin_exists()) {
+                    respond(409, ['error' => 'admin_exists']);
+                }
+                throw $e;
+            }
+            vt_login_admin($admin['id']);
+
+            $mailSent = true;
+            try {
+                vt_send_admin_mail($admin, $token);
+            } catch (Throwable $e) {
+                error_log('[volunteertable] Could not send admin mail: ' . $e->getMessage());
+                $mailSent = false;
+            }
+            respond(201, [
+                'admin' => public_admin($admin),
+                'adminLink' => vt_admin_link($token, false),
+                'mailSent' => $mailSent,
+            ]);
+
+        case 'admin_login':
+            $token = $input['token'] ?? null;
+            $admin = vt_is_token_format($token)
+                ? vt_query('SELECT id, name, email FROM vt_admins WHERE login_token_hash = ?', [vt_hash_token($token)])->fetch()
+                : false;
+            if ($admin === false) {
+                respond(404, ['error' => 'invalid_link']);
+            }
+            vt_login_admin($admin['id']);
+            respond(200, ['admin' => public_admin($admin)]);
+
+        case 'admin_remove':
+            require_admin();
+            $bookingId = $input['bookingId'] ?? null;
+            if (!is_string($bookingId) || vt_query('SELECT 1 FROM vt_bookings WHERE id = ?', [$bookingId])->fetchColumn() === false) {
+                respond(404, ['error' => 'unknown_booking']);
+            }
+            vt_delete_booking($bookingId);
             respond(200, ['ok' => true]);
 
         case 'resend':
