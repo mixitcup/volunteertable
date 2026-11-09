@@ -226,7 +226,7 @@
 
       function renderTimetable() {
         var timetable = new Timetable();
-        timetable.setScope(9, 2);
+        timetable.setScope(0, 0);
         timetable.setLocationInfoContainer('.location-info');
         timetable.addLocations(data.locations.map(function(location) {
           return location.name;
