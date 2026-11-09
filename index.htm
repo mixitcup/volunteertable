@@ -5,7 +5,7 @@
     <meta name="description" content="Vanilla javascript plugin for building nice responsive timetables">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Timetable.js demo</title>
-    
+
     <link rel="stylesheet" href="timetablejs/plugin.css">
     <link rel="stylesheet" href="demo.css">
   </head>
@@ -16,11 +16,125 @@
       <p>Vanilla javascript plugin for building nice responsive timetables. More info on <a href="https://github.com/Grible/timetable.js" target="_blank">Github</a>.</p>
     </div>
 
-    <div class="timetable"></div>
-    
+    <nav class="tabs" role="tablist">
+      <a href="#timetable-tab" role="tab" aria-controls="timetable-tab">Timetable</a>
+      <a href="#locations-tab" role="tab" aria-controls="locations-tab">Location info</a>
+      <a href="#events-tab" role="tab" aria-controls="events-tab">Event info</a>
+    </nav>
+
+    <section id="timetable-tab" class="tab-panel" role="tabpanel">
+      <div class="timetable"></div>
+    </section>
+
+    <section id="locations-tab" class="tab-panel" role="tabpanel" hidden>
+      <div class="location-info"></div>
+    </section>
+
+    <section id="events-tab" class="tab-panel" role="tabpanel" hidden>
+      <div class="event-info-list"></div>
+    </section>
+
     <script src="timetablejs/plugin.js"></script>
 
     <script>
+      var DEFAULT_TAB = 'timetable-tab';
+
+      // Tabs are driven by the URL hash, so "More Info" and event links (which
+      // point at #location-info-N / #event-info-N) open the right tab, and the
+      // browser's back button returns to the previous tab.
+      function showTabForHash() {
+        var id = decodeURIComponent(window.location.hash.slice(1));
+        var target = id ? document.getElementById(id) : null;
+        var panel = target ? target.closest('.tab-panel') : null;
+        if (panel === null) {
+          panel = document.getElementById(DEFAULT_TAB);
+          target = null;
+        }
+
+        document.querySelectorAll('.tab-panel').forEach(function(node) {
+          node.hidden = node !== panel;
+        });
+        document.querySelectorAll('.tabs [role="tab"]').forEach(function(tab) {
+          var selected = tab.getAttribute('aria-controls') === panel.id;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.classList.toggle('is-active', selected);
+        });
+
+        document.querySelectorAll('.is-highlighted').forEach(function(node) {
+          node.classList.remove('is-highlighted');
+        });
+        if (target !== null && target !== panel) {
+          target.classList.add('is-highlighted');
+          target.scrollIntoView({ block: 'start' });
+        } else {
+          window.scrollTo(0, 0);
+        }
+      }
+
+      window.addEventListener('hashchange', showTabForHash);
+      showTabForHash();
+
+      function getEventInfoId(index) {
+        return 'event-info-' + index;
+      }
+
+      function formatTimeRange(start, end) {
+        var dateFormat = { day: 'numeric', month: 'short', year: 'numeric' };
+        var timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
+        var text = start.toLocaleDateString('en-GB', dateFormat) + ', ' +
+          start.toLocaleTimeString('en-GB', timeFormat) + ' – ';
+        if (start.toDateString() !== end.toDateString()) {
+          text += end.toLocaleDateString('en-GB', dateFormat) + ', ';
+        }
+        return text + end.toLocaleTimeString('en-GB', timeFormat);
+      }
+
+      function renderEventInfo(events, locationInfoIds) {
+        var list = document.querySelector('.event-info-list');
+        list.textContent = '';
+
+        var sorted = events
+          .map(function(event, index) { return { event: event, index: index }; })
+          .sort(function(a, b) { return new Date(a.event.start) - new Date(b.event.start); });
+
+        sorted.forEach(function(entry) {
+          var event = entry.event;
+          var article = list.appendChild(document.createElement('article'));
+          article.id = getEventInfoId(entry.index);
+
+          article.appendChild(document.createElement('h2')).textContent = event.name;
+
+          var meta = article.appendChild(document.createElement('p'));
+          meta.className = 'event-meta';
+          meta.appendChild(document.createTextNode(formatTimeRange(new Date(event.start), new Date(event.end)) + ' · '));
+          if (locationInfoIds[event.location]) {
+            var locationLink = meta.appendChild(document.createElement('a'));
+            locationLink.href = '#' + locationInfoIds[event.location];
+            locationLink.textContent = event.location;
+          } else {
+            meta.appendChild(document.createTextNode(event.location));
+          }
+
+          if (typeof event.registered === 'number' && typeof event.capacity === 'number' && event.capacity > 0) {
+            var registration = article.appendChild(document.createElement('p'));
+            registration.className = 'event-registration';
+            var full = event.registered >= event.capacity;
+            registration.textContent = event.registered + ' of ' + event.capacity + ' registered' +
+              (full ? ' (full)' : ', ' + (event.capacity - event.registered) + ' places left');
+          }
+
+          if (event.info) {
+            article.appendChild(document.createElement('p')).textContent = event.info;
+          }
+
+          if (event.url) {
+            var urlLink = article.appendChild(document.createElement('p')).appendChild(document.createElement('a'));
+            urlLink.href = event.url;
+            urlLink.textContent = '> Event website';
+          }
+        });
+      }
+
       Promise.all([
         fetch('api/location.json'),
         fetch('api/events.json')
@@ -42,31 +156,49 @@
           var timetable = new Timetable();
 
           timetable.setScope(9, 2);
+          timetable.setLocationInfoContainer('.location-info');
           timetable.addLocations(locations.map(function(location) {
             return location.name;
           }));
 
-          locations.forEach(function(location) {
+          var locationInfoIds = {};
+          locations.forEach(function(location, index) {
             if (location.url) {
               timetable.setLocationLink(location.name, location.url);
             }
             if (location.info) {
               timetable.setLocationInfo(location.name, location.info);
             }
+            if (location.url || location.info) {
+              // Matches the ids the plugin gives location info entries.
+              locationInfoIds[location.name] = 'location-info-' + index;
+            }
           });
 
-          events.forEach(function(event) {
+          events.forEach(function(event, index) {
             timetable.addEvent(
               event.name,
               event.location,
               new Date(event.start),
               new Date(event.end),
-              event.url
+              {
+                url: '#' + getEventInfoId(index),
+                registered: event.registered,
+                capacity: event.capacity
+              }
             );
           });
 
           var renderer = new Timetable.Renderer(timetable);
           renderer.draw('.timetable');
+
+          if (document.querySelector('.location-info article') === null) {
+            document.querySelector('.location-info').textContent = 'No location information available.';
+          }
+          renderEventInfo(events, locationInfoIds);
+
+          // The data just arrived, so a deep link like #event-info-3 can now be resolved.
+          showTabForHash();
         })
         .catch(function(error) {
           document.querySelector('.timetable').textContent = error.message;

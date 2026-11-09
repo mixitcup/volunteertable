@@ -27,3 +27,58 @@ a {
 .timetable .time-entry.vip-only:hover {
   background-color: #AE67F0;
 }
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 2px solid #E5E5E5;
+  margin-bottom: 20px;
+}
+
+.tabs a {
+  padding: 10px 16px;
+  margin-bottom: -2px;
+  color: #666;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+}
+
+.tabs a:hover {
+  color: #333;
+}
+
+.tabs a.is-active {
+  color: #EC6A5E;
+  border-bottom-color: #EC6A5E;
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+.event-info-list article,
+.location-info-list article {
+  margin-bottom: 24px;
+  padding: 8px 12px;
+  border-left: 3px solid transparent;
+  transition: 600ms background-color;
+}
+
+.event-info-list h2 {
+  margin: 0 0 8px;
+}
+
+.event-info-list p {
+  margin: 0 0 8px;
+}
+
+.event-meta {
+  color: #666;
+}
+
+.event-info-list article.is-highlighted,
+.location-info-list article.is-highlighted {
+  background-color: #FDF0EF;
+  border-left-color: #EC6A5E;
+}

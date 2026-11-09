@@ -10,6 +10,7 @@ var Timetable = function() {
 	this.usingTwelveHour = false;
 	this.locations = [];
 	this.locationLinks = {};
+	this.locationInfoContainer = undefined;
 	this.events = [];
 };
 
@@ -91,6 +92,15 @@ Timetable.Renderer = function(tt) {
 
 			return this;
 		},
+		setLocationInfoContainer: function(selector) {
+			if (typeof selector !== 'string' || selector === '') {
+				throw new Error('Location info container should be a non-empty selector string');
+			}
+
+			this.locationInfoContainer = selector;
+
+			return this;
+		},
 		setLocationInfo: function(location, info) {
 			if (!locationExistsIn(location, this.locations)) {
 				throw new Error('Unknown location');
@@ -165,10 +175,13 @@ Timetable.Renderer = function(tt) {
 					locationNode.className = 'row-heading';
 					locationNode.textContent = location;
 					var links = timetable.locationLinks[location];
-					if (links !== undefined && links.info !== undefined) {
+					if (hasLocationInfo(links)) {
 						appendLocationInfoLink(liNode, location);
 					}
 				}
+			}
+			function hasLocationInfo(links) {
+				return links !== undefined && (links.info !== undefined || links.url !== undefined);
 			}
 			function appendLocationInfoLink(node, location) {
 				var infoLinkNode = node.appendChild(document.createElement('a'));
@@ -180,9 +193,18 @@ Timetable.Renderer = function(tt) {
 				return 'location-info-' + timetable.locations.indexOf(location);
 			}
 			function appendLocationInfoSection(container) {
-				var existingInfoSection = container.nextSibling;
-				if (existingInfoSection !== null && existingInfoSection.className === 'location-info-list') {
-					container.parentNode.removeChild(existingInfoSection);
+				var targetContainer = null;
+				if (timetable.locationInfoContainer !== undefined) {
+					targetContainer = document.querySelector(timetable.locationInfoContainer);
+					if (targetContainer === null) {
+						throw new Error('Location info container not found');
+					}
+					emptyNode(targetContainer);
+				} else {
+					var existingInfoSection = container.nextSibling;
+					if (existingInfoSection !== null && existingInfoSection.className === 'location-info-list') {
+						container.parentNode.removeChild(existingInfoSection);
+					}
 				}
 
 				var infoSection = document.createElement('section');
@@ -211,7 +233,9 @@ Timetable.Renderer = function(tt) {
 					}
 				}
 
-				if (infoSection.childNodes.length > 0) {
+				if (targetContainer !== null) {
+					targetContainer.appendChild(infoSection);
+				} else if (infoSection.childNodes.length > 0) {
 					container.parentNode.insertBefore(infoSection, container.nextSibling);
 				}
 			}
@@ -302,6 +326,42 @@ Timetable.Renderer = function(tt) {
 				eventNode.style.width = computeEventBlockWidth(event);
 				eventNode.style.left = computeEventBlockOffset(event);
 				smallNode.textContent = event.name;
+
+				if (hasOptions && isValidRegistration(event.options.registered, event.options.capacity)) {
+					appendRegistrationBar(event, eventNode);
+				}
+			}
+			function isValidRegistration(registered, capacity) {
+				return typeof registered === 'number' && typeof capacity === 'number' &&
+					registered >= 0 && capacity > 0;
+			}
+			function appendRegistrationBar(event, eventNode) {
+				var registered = event.options.registered;
+				var capacity = event.options.capacity;
+				var ratio = Math.min(registered / capacity, 1);
+				var countText = registered + '/' + capacity;
+
+				eventNode.className += ' has-registration';
+				if (registered >= capacity) {
+					eventNode.className += ' is-full';
+				}
+				eventNode.title = event.name + ' (' + countText + ' registered)';
+
+				var barNode = eventNode.appendChild(document.createElement('span'));
+				barNode.className = 'registration-bar';
+				barNode.setAttribute('role', 'meter');
+				barNode.setAttribute('aria-valuemin', '0');
+				barNode.setAttribute('aria-valuemax', String(capacity));
+				barNode.setAttribute('aria-valuenow', String(registered));
+				barNode.setAttribute('aria-label', countText + ' registered');
+
+				var fillNode = barNode.appendChild(document.createElement('span'));
+				fillNode.className = 'registration-bar-fill';
+				fillNode.style.width = ratio * 100 + '%';
+
+				var countNode = eventNode.appendChild(document.createElement('span'));
+				countNode.className = 'registration-count';
+				countNode.textContent = countText;
 			}
 			function computeEventBlockWidth(event) {
 				var start = event.startDate;

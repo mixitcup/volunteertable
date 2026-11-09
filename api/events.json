@@ -4,6 +4,9 @@
     "location": "Rotterdam",
     "start": "2015-08-17T10:45:00",
     "end": "2015-08-17T12:30:00",
+    "info": "Guided walk through the old town. Wear comfortable shoes.",
+    "registered": 3,
+    "capacity": 10,
     "url": "#"
   },
   {
@@ -11,6 +14,9 @@
     "location": "Madrid",
     "start": "2015-08-17T12:00:00",
     "end": "2015-08-17T13:00:00",
+    "info": "Help set up the sound system and hand out water.",
+    "registered": 12,
+    "capacity": 12,
     "url": "#"
   },
   {
@@ -25,6 +31,8 @@
     "location": "London",
     "start": "2015-08-17T17:45:00",
     "end": "2015-08-17T19:30:00",
+    "registered": 5,
+    "capacity": 8,
     "url": "#"
   },
   {
@@ -38,7 +46,10 @@
     "name": "Hackathon",
     "location": "Tokyo",
     "start": "2015-08-17T11:30:00",
-    "end": "2015-08-17T20:00:00"
+    "end": "2015-08-17T20:00:00",
+    "info": "Volunteers support registration and catering throughout the day.",
+    "registered": 17,
+    "capacity": 40
   },
   {
     "name": "Tokyo Hackathon Livestream",
@@ -51,6 +62,9 @@
     "location": "Jakarta",
     "start": "2015-08-17T09:30:00",
     "end": "2015-08-17T11:45:00",
+    "info": "Serving lunch to participants. Hairnets are provided.",
+    "registered": 1,
+    "capacity": 6,
     "url": "#"
   }
 ]
