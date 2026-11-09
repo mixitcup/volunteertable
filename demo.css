@@ -28,12 +28,22 @@ a {
   background-color: #AE67F0;
 }
 
+/* The tabs stay at the top of the window while scrolling. */
 .tabs {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   border-bottom: 2px solid #E5E5E5;
   margin-bottom: 20px;
+  background-color: white;
+}
+
+/* Keep entries opened via links (e.g. #event-...) from ending up under the tabs. */
+.tab-panel article {
+  scroll-margin-top: 64px;
 }
 
 .tabs a {
