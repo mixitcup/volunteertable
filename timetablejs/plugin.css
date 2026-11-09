@@ -55,13 +55,59 @@
   word-wrap: normal;
 }
 
+.timetable > aside li {
+  display: flex;
+  align-items: center;
+}
+
+.timetable > aside li.has-location-info {
+  padding: 0;
+}
+
 .timetable > aside .location-info-link {
-  display: block;
-  line-height: 13px;
-  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 0 10px 0 15px;
+  color: inherit;
+  cursor: pointer;
+  transition: 150ms background-color, 150ms color;
+}
+
+.timetable > aside .location-info-link .row-heading {
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 0, 0, 0.25);
+  text-underline-offset: 3px;
+}
+
+.timetable > aside .location-info-chevron {
+  flex: none;
+  font-size: 1.4em;
+  line-height: 1;
+  color: #999;
+  transition: 150ms transform, 150ms color;
+}
+
+.timetable > aside .location-info-link:hover,
+.timetable > aside .location-info-link:focus-visible {
+  background-color: #E2E2E2;
+  color: #EC6A5E;
+}
+
+.timetable > aside .location-info-link:hover .location-info-chevron,
+.timetable > aside .location-info-link:focus-visible .location-info-chevron {
+  color: #EC6A5E;
+  transform: translateX(3px);
+}
+
+.timetable > aside .location-info-link:focus-visible {
+  outline: 2px solid #EC6A5E;
+  outline-offset: -2px;
 }
 
 .location-info-list {

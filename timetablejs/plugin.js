@@ -141,6 +141,15 @@ Timetable.Renderer = function(tt) {
 		}
 	}
 
+	function prettyFormatTime(date, usingTwelveHour) {
+		var hour = date.getHours();
+		var minutes = (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
+		if (usingTwelveHour) {
+			return ((hour + 11) % 12 + 1) + ':' + minutes + (hour >= 12 ? 'PM' : 'AM');
+		}
+		return (hour < 10 ? '0' : '') + hour + ':' + minutes;
+	}
+
 	function prettyFormatHour(hour, usingTwelveHour) {
 		var prettyHour;
 			if(usingTwelveHour) {
@@ -171,23 +180,65 @@ Timetable.Renderer = function(tt) {
 				for (var k=0; k<timetable.locations.length; k++) {
 					var liNode = ulNode.appendChild(document.createElement('li'));
 					var location = timetable.locations[k];
-					var locationNode = liNode.appendChild(document.createElement('span'));
-					locationNode.className = 'row-heading';
-					locationNode.textContent = location;
-					var links = timetable.locationLinks[location];
-					if (hasLocationInfo(links)) {
+					if (hasLocationInfo(location)) {
 						appendLocationInfoLink(liNode, location);
+					} else {
+						appendRowHeading(liNode, location);
 					}
 				}
 			}
-			function hasLocationInfo(links) {
-				return links !== undefined && (links.info !== undefined || links.url !== undefined);
+			function hasLocationInfo(location) {
+				var links = timetable.locationLinks[location];
+				var hasLinks = links !== undefined && (links.info !== undefined || links.url !== undefined);
+				return hasLinks || getLocationEvents(location).length > 0;
+			}
+			function getLocationEvents(location) {
+				return timetable.events
+					.filter(function(event) { return event.location === location; })
+					.sort(function(a, b) { return a.startDate - b.startDate; });
+			}
+			function appendLocationEventList(infoNode, events) {
+				var listNode = infoNode.appendChild(document.createElement('ul'));
+				listNode.className = 'location-event-list';
+				events.forEach(function(event) {
+					var itemNode = listNode.appendChild(document.createElement('li'));
+					var timeNode = itemNode.appendChild(document.createElement('span'));
+					timeNode.className = 'location-event-time';
+					timeNode.textContent = prettyFormatTime(event.startDate, timetable.usingTwelveHour) + ' – ' +
+						prettyFormatTime(event.endDate, timetable.usingTwelveHour);
+					itemNode.appendChild(document.createTextNode(' '));
+
+					var hasURL = event.options !== undefined && event.options.url !== undefined;
+					var nameNode = itemNode.appendChild(document.createElement(hasURL ? 'a' : 'span'));
+					nameNode.textContent = event.name;
+					if (hasURL) {
+						nameNode.href = event.options.url;
+					}
+
+					if (event.options !== undefined && isValidRegistration(event.options.registered, event.options.capacity)) {
+						var countNode = itemNode.appendChild(document.createElement('span'));
+						countNode.className = 'location-event-registration';
+						countNode.textContent = ' (' + event.options.registered + '/' + event.options.capacity + ' registered)';
+					}
+				});
+			}
+			function appendRowHeading(node, location) {
+				var locationNode = node.appendChild(document.createElement('span'));
+				locationNode.className = 'row-heading';
+				locationNode.textContent = location;
 			}
 			function appendLocationInfoLink(node, location) {
-				var infoLinkNode = node.appendChild(document.createElement('a'));
-				infoLinkNode.className = 'location-info-link';
-				infoLinkNode.textContent = '> More Info';
-				infoLinkNode.href = '#' + getLocationInfoId(location);
+				// The whole row is the link, so it is easy to hit and clearly clickable.
+				node.className = 'has-location-info';
+				var rowLinkNode = node.appendChild(document.createElement('a'));
+				rowLinkNode.className = 'location-info-link';
+				rowLinkNode.href = '#' + getLocationInfoId(location);
+				rowLinkNode.title = 'Show info for ' + location;
+				appendRowHeading(rowLinkNode, location);
+				var chevronNode = rowLinkNode.appendChild(document.createElement('span'));
+				chevronNode.className = 'location-info-chevron';
+				chevronNode.setAttribute('aria-hidden', 'true');
+				chevronNode.textContent = '›';
 			}
 			function getLocationInfoId(location) {
 				return 'location-info-' + timetable.locations.indexOf(location);
@@ -212,10 +263,11 @@ Timetable.Renderer = function(tt) {
 
 				for (var k = 0; k < timetable.locations.length; k++) {
 					var location = timetable.locations[k];
-					var links = timetable.locationLinks[location];
-					if (links === undefined || (links.url === undefined && links.info === undefined)) {
+					if (!hasLocationInfo(location)) {
 						continue;
 					}
+					var links = timetable.locationLinks[location] || {};
+					var locationEvents = getLocationEvents(location);
 
 					var infoNode = infoSection.appendChild(document.createElement('article'));
 					infoNode.id = getLocationInfoId(location);
@@ -230,6 +282,9 @@ Timetable.Renderer = function(tt) {
 					if (links.info !== undefined) {
 						var textNode = infoNode.appendChild(document.createElement('p'));
 						textNode.textContent = links.info;
+					}
+					if (locationEvents.length > 0) {
+						appendLocationEventList(infoNode, locationEvents);
 					}
 				}
 

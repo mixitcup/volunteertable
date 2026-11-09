@@ -161,17 +161,12 @@
             return location.name;
           }));
 
-          var locationInfoIds = {};
-          locations.forEach(function(location, index) {
+          locations.forEach(function(location) {
             if (location.url) {
               timetable.setLocationLink(location.name, location.url);
             }
             if (location.info) {
               timetable.setLocationInfo(location.name, location.info);
-            }
-            if (location.url || location.info) {
-              // Matches the ids the plugin gives location info entries.
-              locationInfoIds[location.name] = 'location-info-' + index;
             }
           });
 
@@ -195,6 +190,14 @@
           if (document.querySelector('.location-info article') === null) {
             document.querySelector('.location-info').textContent = 'No location information available.';
           }
+          // Link event locations to whichever location entries the plugin rendered.
+          var locationInfoIds = {};
+          locations.forEach(function(location, index) {
+            var id = 'location-info-' + index;
+            if (document.getElementById(id) !== null) {
+              locationInfoIds[location.name] = id;
+            }
+          });
           renderEventInfo(events, locationInfoIds);
 
           // The data just arrived, so a deep link like #event-info-3 can now be resolved.
