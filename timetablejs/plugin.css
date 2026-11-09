@@ -168,7 +168,103 @@
 .timetable > section > header ul {
   display: flex;
   height: 46px;
-  align-items: center;
+  align-items: flex-end;
+  padding-bottom: 4px;
+}
+
+/* Day names above the hours; each stays visible while its day is scrolled. */
+.timetable > section > header .day-labels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  height: 20px;
+}
+
+.timetable > section > header .day-label {
+  flex: none;
+  padding-left: 1px;
+  border-left: 2px solid #BDBDBD;
+}
+
+.timetable > section > header .day-label:first-child {
+  border-left-color: transparent;
+}
+
+.timetable > section > header .day-label span {
+  position: sticky;
+  left: 0;
+  padding: 0 6px;
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.timetable > section > header li.day-start .time-label {
+  font-weight: 700;
+}
+
+.timetable > section > header .now-marker {
+  position: absolute;
+  bottom: 4px;
+  z-index: 1;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border-radius: 3px;
+  background-color: #D32F2F;
+  color: white;
+  font-size: 0.7em;
+  font-weight: 700;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timetable .timeline-canvas {
+  position: relative;
+}
+
+.timetable .day-divider,
+.timetable .now-line,
+.timetable .past-shade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.timetable .day-divider {
+  z-index: 1;
+  width: 2px;
+  margin-left: -1px;
+  background-color: #BDBDBD;
+}
+
+/* Everything left of the current-time line is greyed out and hatched. */
+.timetable .past-shade {
+  left: 0;
+  z-index: 1;
+  background-color: rgba(120, 120, 120, 0.12);
+  background-image: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.05) 0, rgba(0, 0, 0, 0.05) 2px, transparent 2px, transparent 8px);
+}
+
+.timetable .now-line {
+  z-index: 4;
+  width: 2px;
+  margin-left: -1px;
+  background-color: #D32F2F;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.timetable .now-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #D32F2F;
 }
 
 .timetable > section > header li {
@@ -176,12 +272,16 @@
   display: block;
   position: relative;
   width: 96px;
+  height: 16px;
 }
 
 .timetable > section > header li .time-label {
   display: block;
   position: absolute;
+  top: 0;
   left: 0;
+  line-height: 16px;
+  white-space: nowrap;
 }
 
 .timetable > section > header li:not(:first-of-type) .time-label {
@@ -321,4 +421,45 @@
 
 .timetable .time-entry.is-full:hover {
   background-color: #8A8A8A;
+}
+
+/* Past and ongoing events */
+
+.timetable .time-entry.is-past,
+.timetable .time-entry.is-past.is-full {
+  background-color: #D6D6D6;
+  border-color: #B0B0B0;
+  color: #555;
+  text-decoration: line-through;
+  text-decoration-color: rgba(0, 0, 0, 0.35);
+}
+
+.timetable .time-entry.is-past:hover {
+  background-color: #C8C8C8;
+}
+
+.timetable .time-entry.is-past .registration-bar {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.timetable .time-entry.is-past .registration-bar-fill {
+  background-color: #999;
+}
+
+.timetable .time-entry.is-current {
+  box-shadow: 0 0 0 2px #D32F2F, 0 2px 6px rgba(0, 0, 0, 0.25);
+  z-index: 3;
+}
+
+.location-event-list li.is-past {
+  color: #999;
+}
+
+.location-event-list li.is-past a {
+  color: #999;
+  text-decoration: line-through;
+}
+
+.location-event-list li.is-current {
+  font-weight: 700;
 }

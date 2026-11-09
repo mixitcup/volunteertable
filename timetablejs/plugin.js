@@ -11,6 +11,7 @@ var Timetable = function() {
 	this.locations = [];
 	this.locationLinks = {};
 	this.locationInfoContainer = undefined;
+	this.locale = 'en-GB';
 	this.events = [];
 };
 
@@ -19,7 +20,14 @@ Timetable.Renderer = function(tt) {
 		throw new Error('Initialize renderer using a Timetable');
 	}
 	this.timetable = tt;
+	this.timer = null;
+	this.layout = null;
 };
+
+// Width of one hour in the timeline, in pixels (matches the grid in plugin.css).
+Timetable.HOUR_WIDTH = 96;
+// How often the current-time line and past/current markers are refreshed.
+Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 
 (function() {
 	function isValidHourRange(start, end) {
@@ -45,6 +53,79 @@ Timetable.Renderer = function(tt) {
 	function getDurationHours(startHour, endHour) {
 		return endHour >= startHour ? endHour - startHour : 24 + endHour - startHour;
 	}
+	function getScopeDurationHours(scope) {
+		// A scope from an hour to the same hour covers the whole day.
+		return getDurationHours(scope.hourStart, scope.hourEnd) || 24;
+	}
+
+	/*
+	 * Multi-day layout. Each day shows the scope (e.g. 09:00 to 02:00 the next
+	 * morning); the hours outside the scope are left out, so the days sit
+	 * directly next to each other on one horizontal timeline.
+	 */
+
+	// Start of the displayed day that `date` belongs to: the latest scope start at or before it.
+	function getDayStart(date, scope) {
+		var dayStart = new Date(date.getTime());
+		dayStart.setHours(scope.hourStart, 0, 0, 0);
+		if (dayStart > date) {
+			dayStart.setDate(dayStart.getDate() - 1);
+		}
+		return dayStart;
+	}
+	function computeDays(events, scope, now) {
+		var first, last;
+		if (events.length === 0) {
+			first = last = getDayStart(now, scope);
+		} else {
+			var minStart = Math.min.apply(null, events.map(function(event) { return event.startDate.getTime(); }));
+			// End times are exclusive: an event ending exactly at 09:00 doesn't need the next day.
+			var maxEnd = Math.max.apply(null, events.map(function(event) { return event.endDate.getTime() - 1; }));
+			first = getDayStart(new Date(minStart), scope);
+			last = getDayStart(new Date(maxEnd), scope);
+		}
+
+		var days = [];
+		// setDate keeps the local start hour across daylight saving changes.
+		for (var day = new Date(first.getTime()); day <= last; day.setDate(day.getDate() + 1)) {
+			days.push(new Date(day.getTime()));
+		}
+		return days;
+	}
+	function createLayout(timetable, now) {
+		var scopeHours = getScopeDurationHours(timetable.scope);
+		var days = computeDays(timetable.events, timetable.scope, now);
+		var dayWidth = scopeHours * Timetable.HOUR_WIDTH;
+		var layout = {
+			days: days,
+			scopeHours: scopeHours,
+			dayWidth: dayWidth,
+			width: days.length * dayWidth,
+			// Horizontal position in pixels of a point in time. Times outside the
+			// scope (e.g. at night) are placed at the end of their day.
+			positionOf: function(date) {
+				var dayStart = getDayStart(date, timetable.scope);
+				var index = -1;
+				for (var k = 0; k < days.length; k++) {
+					if (days[k].getTime() === dayStart.getTime()) {
+						index = k;
+						break;
+					}
+				}
+				if (index === -1) {
+					return date < days[0] ? 0 : layout.width;
+				}
+				var hoursIntoDay = Math.min((date - dayStart) / 3600000, scopeHours);
+				return index * dayWidth + hoursIntoDay * Timetable.HOUR_WIDTH;
+			},
+			isInRange: function(date) {
+				var start = days[0];
+				var end = new Date(days[days.length - 1].getTime() + scopeHours * 3600000);
+				return date >= start && date <= end;
+			}
+		};
+		return layout;
+	}
 
 	Timetable.prototype = {
 		setScope: function(start, end) {
@@ -59,6 +140,10 @@ Timetable.Renderer = function(tt) {
 		},
 		useTwelveHour: function(){
 			this.usingTwelveHour = true;
+		},
+		setLocale: function(locale) {
+			this.locale = locale;
+			return this;
 		},
 		addLocations: function(newLocations) {
 			function hasProperFormat() {
@@ -150,6 +235,12 @@ Timetable.Renderer = function(tt) {
 		return (hour < 10 ? '0' : '') + hour + ':' + minutes;
 	}
 
+	function prettyFormatDay(date, locale, long) {
+		return date.toLocaleDateString(locale, long ?
+			{ weekday: 'long', day: 'numeric', month: 'long' } :
+			{ weekday: 'short', day: 'numeric', month: 'short' });
+	}
+
 	function prettyFormatHour(hour, usingTwelveHour) {
 		var prettyHour;
 			if(usingTwelveHour) {
@@ -202,9 +293,11 @@ Timetable.Renderer = function(tt) {
 				listNode.className = 'location-event-list';
 				events.forEach(function(event) {
 					var itemNode = listNode.appendChild(document.createElement('li'));
+					trackEventNode(event, itemNode);
 					var timeNode = itemNode.appendChild(document.createElement('span'));
 					timeNode.className = 'location-event-time';
-					timeNode.textContent = prettyFormatTime(event.startDate, timetable.usingTwelveHour) + ' – ' +
+					timeNode.textContent = prettyFormatDay(event.startDate, timetable.locale, false) + ', ' +
+						prettyFormatTime(event.startDate, timetable.usingTwelveHour) + ' – ' +
 						prettyFormatTime(event.endDate, timetable.usingTwelveHour);
 					itemNode.appendChild(document.createTextNode(' '));
 
@@ -295,42 +388,73 @@ Timetable.Renderer = function(tt) {
 				}
 			}
 			function appendTimetableSection(container) {
-        var sectionNode = container.appendChild(document.createElement('section'));
+				var sectionNode = container.appendChild(document.createElement('section'));
 				var headerNode = appendColumnHeaders(sectionNode);
 				var timeNode = sectionNode.appendChild(document.createElement('time'));
-        timeNode.className = 'syncscroll';
-        timeNode.setAttribute('name', 'scrollheader');
-        var width = headerNode.scrollWidth + 'px';
-				appendTimeRows(timeNode, width);
+				var canvasNode = timeNode.appendChild(document.createElement('div'));
+				canvasNode.className = 'timeline-canvas';
+				canvasNode.style.width = layout.width + 'px';
+				appendTimeRows(canvasNode);
+				appendDayDividers(canvasNode);
+
+				nowNodes.pastShade = canvasNode.appendChild(document.createElement('div'));
+				nowNodes.pastShade.className = 'past-shade';
+				nowNodes.line = canvasNode.appendChild(document.createElement('div'));
+				nowNodes.line.className = 'now-line';
+				nowNodes.line.setAttribute('aria-hidden', 'true');
+
+				// The header can't be scrolled by itself; it follows the timeline.
+				timeNode.addEventListener('scroll', function() {
+					headerNode.scrollLeft = timeNode.scrollLeft;
+				});
+				renderer.scrollNode = timeNode;
 			}
 			function appendColumnHeaders(node) {
 				var headerNode = node.appendChild(document.createElement('header'));
-				headerNode.className = 'syncscroll';
-        headerNode.setAttribute('name', 'scrollheader');
+				var dayLabelsNode = headerNode.appendChild(document.createElement('div'));
+				dayLabelsNode.className = 'day-labels';
+				dayLabelsNode.style.width = layout.width + 'px';
 				var headerULNode = headerNode.appendChild(document.createElement('ul'));
+				headerULNode.style.width = layout.width + 'px';
 
-				var completed = false;
-				var looped = false;
+				layout.days.forEach(function(day) {
+					var dayNode = dayLabelsNode.appendChild(document.createElement('div'));
+					dayNode.className = 'day-label';
+					dayNode.style.width = layout.dayWidth + 'px';
+					dayNode.appendChild(document.createElement('span')).textContent =
+						prettyFormatDay(day, timetable.locale, true);
 
-				for (var hour=timetable.scope.hourStart; !completed;) {
-					var liNode = headerULNode.appendChild(document.createElement('li'));
-					var spanNode = liNode.appendChild(document.createElement('span'));
-					spanNode.className = 'time-label';
-					spanNode.textContent = prettyFormatHour(hour, timetable.usingTwelveHour);
-
-					if (hour === timetable.scope.hourEnd && (timetable.scope.hourStart !== timetable.scope.hourEnd || looped)) {
-						completed = true;
+					for (var k = 0; k < layout.scopeHours; k++) {
+						var liNode = headerULNode.appendChild(document.createElement('li'));
+						if (k === 0) {
+							liNode.className = 'day-start';
+						}
+						var spanNode = liNode.appendChild(document.createElement('span'));
+						spanNode.className = 'time-label';
+						spanNode.textContent = prettyFormatHour((timetable.scope.hourStart + k) % 24, timetable.usingTwelveHour);
 					}
-					if (++hour === 24) {
-						hour = 0;
-						looped = true;
-					}
-				}
+				});
+
+				// Closing label at the end of the last day.
+				var endNode = headerULNode.appendChild(document.createElement('li'));
+				var endLabelNode = endNode.appendChild(document.createElement('span'));
+				endLabelNode.className = 'time-label';
+				endLabelNode.textContent = prettyFormatHour(timetable.scope.hourEnd, timetable.usingTwelveHour);
+
+				nowNodes.marker = headerNode.appendChild(document.createElement('span'));
+				nowNodes.marker.className = 'now-marker';
+
 				return headerNode;
 			}
-			function appendTimeRows(node, width) {
+			function appendDayDividers(node) {
+				for (var k = 1; k < layout.days.length; k++) {
+					var dividerNode = node.appendChild(document.createElement('div'));
+					dividerNode.className = 'day-divider';
+					dividerNode.style.left = k * layout.dayWidth + 'px';
+				}
+			}
+			function appendTimeRows(node) {
 				var ulNode = node.appendChild(document.createElement('ul'));
-        ulNode.style.width = width;
 				ulNode.className = 'room-timeline';
 				for (var k=0; k<timetable.locations.length; k++) {
 					var liNode = ulNode.appendChild(document.createElement('li'));
@@ -378,9 +502,11 @@ Timetable.Renderer = function(tt) {
         }
 
 				eventNode.className = hasAdditionalClass ? 'time-entry ' + event.options.class : 'time-entry';
-				eventNode.style.width = computeEventBlockWidth(event);
-				eventNode.style.left = computeEventBlockOffset(event);
+				var left = layout.positionOf(event.startDate);
+				eventNode.style.left = left + 'px';
+				eventNode.style.width = Math.max(layout.positionOf(event.endDate) - left, 0) + 'px';
 				smallNode.textContent = event.name;
+				trackEventNode(event, eventNode);
 
 				if (hasOptions && isValidRegistration(event.options.registered, event.options.capacity)) {
 					appendRegistrationBar(event, eventNode);
@@ -418,30 +544,67 @@ Timetable.Renderer = function(tt) {
 				countNode.className = 'registration-count';
 				countNode.textContent = countText;
 			}
-			function computeEventBlockWidth(event) {
-				var start = event.startDate;
-				var end = event.endDate;
-				var durationHours = computeDurationInHours(start, end);
-				return durationHours / scopeDurationHours * 100 + '%';
-			}
-			function computeDurationInHours(start, end) {
-				return (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-			}
-			function computeEventBlockOffset(event) {
-				var scopeStartHours = timetable.scope.hourStart;
-				var eventStartHours = event.startDate.getHours() + (event.startDate.getMinutes() / 60);
-				var hoursBeforeEvent =  getDurationHours(scopeStartHours, eventStartHours);
-				return hoursBeforeEvent / scopeDurationHours * 100 + '%';
+			// Nodes that get marked as past/current as time goes on.
+			function trackEventNode(event, node) {
+				trackedEvents.push({ event: event, node: node });
 			}
 
-			var scopeDurationHours = getDurationHours(timetable.scope.hourStart, timetable.scope.hourEnd);
+			var renderer = this;
+			var trackedEvents = [];
+			var nowNodes = {};
+			var layout = createLayout(timetable, new Date());
 			var container = document.querySelector(selector);
 			checkContainerPrecondition(container);
 			emptyNode(container);
 			appendTimetableAside(container);
 			appendTimetableSection(container);
 			appendLocationInfoSection(container);
-			//syncscroll.reset();
+
+			this.layout = layout;
+			this.trackedEvents = trackedEvents;
+			this.nowNodes = nowNodes;
+			this.updateNow();
+			if (this.timer !== null) {
+				clearInterval(this.timer);
+			}
+			this.timer = setInterval(this.updateNow.bind(this), Timetable.NOW_UPDATE_INTERVAL);
+		},
+
+		// Moves the current-time line and marks events as past or current.
+		updateNow: function() {
+			var now = new Date();
+			var nodes = this.nowNodes;
+			var inRange = this.layout.isInRange(now);
+			var x = this.layout.positionOf(now);
+
+			nodes.line.hidden = !inRange;
+			nodes.marker.hidden = !inRange;
+			nodes.line.style.left = x + 'px';
+			nodes.marker.style.left = x + 'px';
+			nodes.marker.textContent = prettyFormatTime(now, this.timetable.usingTwelveHour);
+			nodes.pastShade.style.width = x + 'px';
+
+			this.trackedEvents.forEach(function(tracked) {
+				var isPast = tracked.event.endDate <= now;
+				var isCurrent = !isPast && tracked.event.startDate <= now;
+				tracked.node.classList.toggle('is-past', isPast);
+				tracked.node.classList.toggle('is-current', isCurrent);
+			});
+		},
+
+		/*
+		 * Scrolls the timeline so that a little of the past is visible and
+		 * mostly what is happening now and next. Returns false while the
+		 * timeline is hidden (it can't be scrolled then), so it can be retried.
+		 */
+		scrollToNow: function() {
+			var scrollNode = this.scrollNode;
+			if (!scrollNode || scrollNode.clientWidth === 0) {
+				return false;
+			}
+			var pastWidth = Math.min(Timetable.HOUR_WIDTH, scrollNode.clientWidth * 0.2);
+			scrollNode.scrollLeft = Math.max(0, this.layout.positionOf(new Date()) - pastWidth);
+			return true;
 		}
 	};
 

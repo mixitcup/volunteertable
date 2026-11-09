@@ -38,6 +38,16 @@
 
     <script>
       var DEFAULT_TAB = 'timetable-tab';
+      var timetableRenderer = null;
+      var timetableScrolledToNow = false;
+
+      // Scrolling only works while the timetable is visible, so this is
+      // retried whenever the timetable tab is shown until it succeeds once.
+      function scrollTimetableToNow() {
+        if (timetableRenderer !== null && !timetableScrolledToNow) {
+          timetableScrolledToNow = timetableRenderer.scrollToNow();
+        }
+      }
 
       // Tabs are driven by the URL hash, so "More Info" and event links (which
       // point at #location-info-N / #event-info-N) open the right tab, and the
@@ -68,6 +78,10 @@
           target.scrollIntoView({ block: 'start' });
         } else {
           window.scrollTo(0, 0);
+        }
+
+        if (panel.id === 'timetable-tab') {
+          scrollTimetableToNow();
         }
       }
 
@@ -101,6 +115,8 @@
           var event = entry.event;
           var article = list.appendChild(document.createElement('article'));
           article.id = getEventInfoId(entry.index);
+          article.dataset.start = new Date(event.start).getTime();
+          article.dataset.end = new Date(event.end).getTime();
 
           article.appendChild(document.createElement('h2')).textContent = event.name;
 
@@ -133,7 +149,20 @@
             urlLink.textContent = '> Event website';
           }
         });
+
+        updateEventInfoTimes();
       }
+
+      // Marks entries on the Event info tab as past or ongoing.
+      function updateEventInfoTimes() {
+        var now = Date.now();
+        document.querySelectorAll('.event-info-list article').forEach(function(article) {
+          var isPast = Number(article.dataset.end) <= now;
+          article.classList.toggle('is-past', isPast);
+          article.classList.toggle('is-current', !isPast && Number(article.dataset.start) <= now);
+        });
+      }
+      setInterval(updateEventInfoTimes, Timetable.NOW_UPDATE_INTERVAL);
 
       Promise.all([
         fetch('api/location.json'),
@@ -184,8 +213,8 @@
             );
           });
 
-          var renderer = new Timetable.Renderer(timetable);
-          renderer.draw('.timetable');
+          timetableRenderer = new Timetable.Renderer(timetable);
+          timetableRenderer.draw('.timetable');
 
           if (document.querySelector('.location-info article') === null) {
             document.querySelector('.location-info').textContent = 'No location information available.';

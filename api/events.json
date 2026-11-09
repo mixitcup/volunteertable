@@ -2,8 +2,8 @@
   {
     "name": "Sightseeing",
     "location": "Rotterdam",
-    "start": "2015-08-17T10:45:00",
-    "end": "2015-08-17T12:30:00",
+    "start": "2026-11-09T10:45:00",
+    "end": "2026-11-09T12:30:00",
     "info": "Guided walk through the old town. Wear comfortable shoes.",
     "registered": 3,
     "capacity": 10,
@@ -12,8 +12,8 @@
   {
     "name": "Zumba",
     "location": "Madrid",
-    "start": "2015-08-17T12:00:00",
-    "end": "2015-08-17T13:00:00",
+    "start": "2026-11-09T12:00:00",
+    "end": "2026-11-09T13:00:00",
     "info": "Help set up the sound system and hand out water.",
     "registered": 12,
     "capacity": 12,
@@ -22,15 +22,15 @@
   {
     "name": "Zumbu",
     "location": "Madrid",
-    "start": "2015-08-17T13:30:00",
-    "end": "2015-08-17T15:00:00",
+    "start": "2026-11-10T13:30:00",
+    "end": "2026-11-10T15:00:00",
     "url": "#"
   },
   {
     "name": "Lasergaming",
     "location": "London",
-    "start": "2015-08-17T17:45:00",
-    "end": "2015-08-17T19:30:00",
+    "start": "2026-11-10T17:45:00",
+    "end": "2026-11-10T19:30:00",
     "registered": 5,
     "capacity": 8,
     "url": "#"
@@ -38,15 +38,15 @@
   {
     "name": "All-you-can-eat grill",
     "location": "New York",
-    "start": "2015-08-17T21:00:00",
-    "end": "2015-08-18T01:30:00",
+    "start": "2026-11-09T21:00:00",
+    "end": "2026-11-10T01:30:00",
     "url": "#"
   },
   {
     "name": "Hackathon",
     "location": "Tokyo",
-    "start": "2015-08-17T11:30:00",
-    "end": "2015-08-17T20:00:00",
+    "start": "2026-11-09T11:30:00",
+    "end": "2026-11-09T20:00:00",
     "info": "Volunteers support registration and catering throughout the day.",
     "registered": 17,
     "capacity": 40
@@ -54,17 +54,34 @@
   {
     "name": "Tokyo Hackathon Livestream",
     "location": "Los Angeles",
-    "start": "2015-08-17T12:30:00",
-    "end": "2015-08-17T16:15:00"
+    "start": "2026-11-09T12:30:00",
+    "end": "2026-11-09T16:15:00"
   },
   {
     "name": "Lunch",
     "location": "Jakarta",
-    "start": "2015-08-17T09:30:00",
-    "end": "2015-08-17T11:45:00",
+    "start": "2026-11-09T09:30:00",
+    "end": "2026-11-09T11:45:00",
     "info": "Serving lunch to participants. Hairnets are provided.",
     "registered": 1,
     "capacity": 6,
     "url": "#"
+  },
+  {
+    "name": "Farewell breakfast",
+    "location": "Jakarta",
+    "start": "2026-11-11T09:30:00",
+    "end": "2026-11-11T11:00:00",
+    "registered": 4,
+    "capacity": 10
+  },
+  {
+    "name": "Clean-up",
+    "location": "Rotterdam",
+    "start": "2026-11-11T10:00:00",
+    "end": "2026-11-11T13:00:00",
+    "registered": 2,
+    "capacity": 15,
+    "info": "Help take down the stands. Gloves are provided."
   }
 ]

@@ -103,3 +103,165 @@ a {
 .location-event-registration {
   color: #666;
 }
+
+[hidden] {
+  display: none !important;
+}
+
+.auth {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  border: 1px solid #E5E5E5;
+  border-radius: 6px;
+  background-color: #FAFAFA;
+}
+
+.auth-card h2 {
+  margin: 0 0 8px;
+}
+
+.auth-card label {
+  display: block;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.auth-card input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid #CCC;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.auth-card input:focus {
+  outline: 2px solid #EC6A5E;
+  outline-offset: -1px;
+  border-color: #EC6A5E;
+}
+
+.button {
+  padding: 9px 18px;
+  border: 1px solid #DF2E1E;
+  border-radius: 4px;
+  background-color: #EC6A5E;
+  color: white;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.button:hover {
+  background-color: #E84132;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.button-secondary {
+  background-color: white;
+  color: #DF2E1E;
+}
+
+.button-secondary:hover {
+  background-color: #FDF0EF;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #DF2E1E;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:disabled {
+  color: #999;
+  cursor: default;
+}
+
+.auth-message {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background-color: #EEF6EE;
+  border-left: 3px solid #4C9A4C;
+}
+
+.auth-message.is-error {
+  background-color: #FDF0EF;
+  border-left-color: #EC6A5E;
+}
+
+.auth-hint {
+  margin: 14px 0 0;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.login-link-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.login-link-row input {
+  flex: 1 1 auto;
+  margin-top: 0;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+.user-bar {
+  margin-bottom: 12px;
+  text-align: right;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.event-info-list article.is-past {
+  color: #999;
+}
+
+.event-info-list article.is-past h2 {
+  text-decoration: line-through;
+  text-decoration-color: rgba(0, 0, 0, 0.3);
+}
+
+.event-info-list article.is-past h2::after,
+.event-info-list article.is-current h2::after {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.5em;
+  font-weight: 700;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.event-info-list article.is-past h2::after {
+  content: 'Past';
+  background-color: #E5E5E5;
+  color: #666;
+}
+
+.event-info-list article.is-current h2::after {
+  content: 'Now';
+  background-color: #D32F2F;
+  color: white;
+}
