@@ -22,10 +22,15 @@ Timetable.Renderer = function(tt) {
 	this.timetable = tt;
 	this.timer = null;
 	this.layout = null;
+	this.selector = null;
+	this.mediaListener = null;
 };
 
-// Width of one hour in the timeline, in pixels (matches the grid in plugin.css).
+// Width of one hour in the timeline, in pixels. On narrow screens hours are
+// narrower, so more of the day fits. The grid in plugin.css follows via --hour-width.
 Timetable.HOUR_WIDTH = 96;
+Timetable.HOUR_WIDTH_NARROW = 72;
+Timetable.NARROW_SCREEN = '(max-width: 600px)';
 // How often the current-time line and past/current markers are refreshed.
 Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 
@@ -92,11 +97,16 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 		}
 		return days;
 	}
+	function isNarrowScreen() {
+		return typeof window.matchMedia === 'function' && window.matchMedia(Timetable.NARROW_SCREEN).matches;
+	}
 	function createLayout(timetable, now) {
 		var scopeHours = getScopeDurationHours(timetable.scope);
 		var days = computeDays(timetable.events, timetable.scope, now);
-		var dayWidth = scopeHours * Timetable.HOUR_WIDTH;
+		var hourWidth = isNarrowScreen() ? Timetable.HOUR_WIDTH_NARROW : Timetable.HOUR_WIDTH;
+		var dayWidth = scopeHours * hourWidth;
 		var layout = {
+			hourWidth: hourWidth,
 			days: days,
 			scopeHours: scopeHours,
 			dayWidth: dayWidth,
@@ -116,7 +126,7 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 					return date < days[0] ? 0 : layout.width;
 				}
 				var hoursIntoDay = Math.min((date - dayStart) / 3600000, scopeHours);
-				return index * dayWidth + hoursIntoDay * Timetable.HOUR_WIDTH;
+				return index * dayWidth + hoursIntoDay * hourWidth;
 			},
 			isInRange: function(date) {
 				var start = days[0];
@@ -556,6 +566,7 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 			var container = document.querySelector(selector);
 			checkContainerPrecondition(container);
 			emptyNode(container);
+			container.style.setProperty('--hour-width', layout.hourWidth + 'px');
 			appendTimetableAside(container);
 			appendTimetableSection(container);
 			appendLocationInfoSection(container);
@@ -568,6 +579,27 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				clearInterval(this.timer);
 			}
 			this.timer = setInterval(this.updateNow.bind(this), Timetable.NOW_UPDATE_INTERVAL);
+			this.watchScreenWidth(selector);
+		},
+
+		// Redraws with the matching hour width when the screen gets narrow or wide
+		// (e.g. when a tablet is rotated).
+		watchScreenWidth: function(selector) {
+			this.selector = selector;
+			if (this.mediaListener !== null || typeof window.matchMedia !== 'function') {
+				return;
+			}
+			var renderer = this;
+			var query = window.matchMedia(Timetable.NARROW_SCREEN);
+			this.mediaListener = function() {
+				renderer.draw(renderer.selector);
+				renderer.scrollToNow();
+			};
+			if (query.addEventListener) {
+				query.addEventListener('change', this.mediaListener);
+			} else {
+				query.addListener(this.mediaListener); // older Safari
+			}
 		},
 
 		// Moves the current-time line and marks events as past or current.
@@ -602,7 +634,7 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 			if (!scrollNode || scrollNode.clientWidth === 0) {
 				return false;
 			}
-			var pastWidth = Math.min(Timetable.HOUR_WIDTH, scrollNode.clientWidth * 0.2);
+			var pastWidth = Math.min(this.layout.hourWidth, scrollNode.clientWidth * 0.2);
 			scrollNode.scrollLeft = Math.max(0, this.layout.positionOf(new Date()) - pastWidth);
 			return true;
 		}

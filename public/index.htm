@@ -2,6 +2,8 @@
 <html>
   <head>
     <meta charset="utf-8">
+    <!-- Without this, phones render the page as a ~980px desktop page, shrunk down. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>VolunteerTable</title>
 
     <link rel="stylesheet" href="timetablejs/plugin.css">
@@ -140,6 +142,13 @@
           var selected = tab.getAttribute('aria-controls') === panel.id;
           tab.setAttribute('aria-selected', String(selected));
           tab.classList.toggle('is-active', selected);
+          // On phones the tab bar scrolls sideways: keep the selected tab in view.
+          if (selected) {
+            var bar = tab.parentNode;
+            if (tab.offsetLeft < bar.scrollLeft || tab.offsetLeft + tab.offsetWidth > bar.scrollLeft + bar.clientWidth) {
+              bar.scrollLeft = tab.offsetLeft - 16;
+            }
+          }
         });
 
         document.querySelectorAll('.is-highlighted').forEach(function(node) {
@@ -1310,8 +1319,8 @@
           adminUsers.length + (adminUsers.length === 1 ? ' person' : ' people') + ', ' +
           bookingCount + (bookingCount === 1 ? ' registration' : ' registrations')));
 
-        panel.appendChild(el('p', null, button('Download as Excel', 'button', downloadExcel),
-          el('span', 'hint', ' All registrations, events, people and locations in one .xlsx file.')));
+        panel.appendChild(el('p', 'admin-export', button('Download as Excel', 'button', downloadExcel),
+          el('span', 'hint', 'All registrations, events, people and locations in one .xlsx file.')));
 
         panel.appendChild(renderInviteLinkBox());
         panel.appendChild(renderAdminLinkBox());
@@ -1347,10 +1356,10 @@
             var eventLink = el('a', null, event.name);
             eventLink.href = '#' + getEventInfoId(event);
             var item = bookings.appendChild(el('li', null,
-              el('span', 'location-event-time', formatTimeRange(new Date(event.start), new Date(event.end))), ' ',
-              eventLink, ' · ', locationLink(event.location, locationInfoIds),
-              user.names.length > 1 ? ' (as ' + booking.name + ')' : null,
-              ' ',
+              el('span', 'admin-booking-details',
+                el('span', 'location-event-time', formatTimeRange(new Date(event.start), new Date(event.end))), ' ',
+                eventLink, ' · ', locationLink(event.location, locationInfoIds),
+                user.names.length > 1 ? ' (as ' + booking.name + ')' : null),
               button('Remove', 'link-button', function() {
                 removeBooking({ id: booking.id, name: booking.name, email: user.email }, event);
               })));

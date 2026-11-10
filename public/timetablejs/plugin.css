@@ -271,7 +271,8 @@
   flex: none;
   display: block;
   position: relative;
-  width: 96px;
+  /* One hour; set by plugin.js (narrower on small screens). */
+  width: var(--hour-width, 96px);
   height: 16px;
 }
 
@@ -342,12 +343,13 @@
 
 .timetable ul.room-timeline li::before {
   background-image: linear-gradient(to right, #E5E5E5 1px, transparent 1px);
-  background-size: 24px auto;
+  /* A thin line every quarter of an hour. */
+  background-size: calc(var(--hour-width, 96px) / 4) auto;
 }
 
 .timetable ul.room-timeline li::after {
   background-image: linear-gradient(to right, #E5E5E5, #E5E5E5 1px, #F4F4F4 1px, #F4F4F4 2px, #E5E5E5 2px, #E5E5E5 3px, transparent 3px, transparent);
-  background-size: 96px auto;
+  background-size: var(--hour-width, 96px) auto;
   background-position: -2px 0;
 }
 

@@ -658,3 +658,151 @@ body.no-access .tab-panel {
 #page-intro[hidden] {
   display: none;
 }
+
+/* ==========================================================================
+ * Responsive layout
+ * ========================================================================== */
+
+/* Long text is easier to read with a limited line length; the timetable keeps the full width. */
+#page-intro {
+  max-width: 70ch;
+}
+
+.event-info-list,
+.my-event-list,
+.admin-panel,
+.location-info,
+.location-admin {
+  max-width: 820px;
+}
+
+/* Images or long words (e.g. links) never push the page wider than the screen. */
+.tab-panel p,
+.tab-panel li,
+.tab-panel h2 {
+  overflow-wrap: break-word;
+}
+
+.form-buttons {
+  flex-wrap: wrap;
+}
+
+.editor-dialog {
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+
+/* Admin: event details on the left, "Remove" on the right. */
+.admin-booking-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.admin-booking-details {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-booking-list li > .link-button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.admin-export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.admin-export .hint {
+  margin: 0;
+}
+
+/* Bigger touch targets on touch screens. */
+@media (pointer: coarse) {
+  .remove-chip-button {
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+  }
+
+  .link-button {
+    padding: 6px 0;
+  }
+}
+
+/* Phones and narrow windows */
+@media (max-width: 600px) {
+  body {
+    margin: 8px 12px;
+  }
+
+  .hero-unit h1 {
+    margin: 12px 0 8px;
+    font-size: 1.6em;
+  }
+
+  /* One row of tabs that can be swiped sideways, instead of several wrapped rows. */
+  .tabs {
+    flex-wrap: nowrap;
+    gap: 0;
+    margin-left: -12px;
+    margin-right: -12px;
+    padding: 0 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabs a {
+    flex: none;
+    padding: 12px 12px;
+    white-space: nowrap;
+  }
+
+  /* 16px keeps iPhones from zooming in when a field is tapped. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .booking-form,
+  .location-admin,
+  .admin-link-box,
+  .access-gate {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .editor-dialog {
+    padding: 16px;
+  }
+
+  /* Narrower location column in the timetable. */
+  .timetable > aside li {
+    padding-left: 8px;
+    padding-right: 6px;
+  }
+
+  .timetable > aside .location-info-link {
+    padding: 0 6px 0 8px;
+    gap: 4px;
+  }
+
+  .location-event-time {
+    min-width: 0;
+    margin-right: 4px;
+  }
+
+  .admin-user {
+    padding: 8px 0 8px 10px;
+  }
+}
