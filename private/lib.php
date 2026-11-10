@@ -28,9 +28,82 @@ function vt_config(): array
         ];
         $file = __DIR__ . '/config.php';
         $custom = is_file($file) ? require $file : [];
-        $config = array_merge($defaults, is_array($custom) ? $custom : []);
+        $custom = is_array($custom) ? $custom : [];
+        $config = array_merge($defaults, $custom);
+        $config['db'] = vt_db_settings($custom, $defaults['db']);
     }
     return $config;
+}
+
+/**
+ * Database connection, in this order of precedence:
+ *  1. 'db' => ['dsn' => ..., 'username' => ..., 'password' => ...] in config.php (any PDO database);
+ *  2. the Engelsystem format: 'database' => ['driver', 'host', 'database', 'username', 'password']
+ *     in config.php, with the Engelsystem's environment variables MYSQL_TYPE, MYSQL_HOST,
+ *     MYSQL_DATABASE, MYSQL_USER and MYSQL_PASSWORD as defaults (config.php wins);
+ *  3. otherwise a SQLite file in private/data/ for testing.
+ * Both 1. and 2. also accept 'options' (PDO options, e.g. PDO::MYSQL_ATTR_SSL_CA)
+ * and 'sslmode' (see vt_check_sslmode()).
+ */
+function vt_db_settings(array $custom, array $sqliteDefault): array
+{
+    if (isset($custom['db']) && is_array($custom['db'])) {
+        return array_merge($sqliteDefault, $custom['db']);
+    }
+
+    $fromEnv = [];
+    foreach (['driver' => 'MYSQL_TYPE', 'host' => 'MYSQL_HOST', 'database' => 'MYSQL_DATABASE',
+              'username' => 'MYSQL_USER', 'password' => 'MYSQL_PASSWORD'] as $key => $variable) {
+        $value = getenv($variable);
+        if ($value !== false) {
+            $fromEnv[$key] = $value;
+        }
+    }
+    $fromFile = isset($custom['database']) && is_array($custom['database']) ? $custom['database'] : [];
+    if ($fromEnv === [] && $fromFile === []) {
+        return $sqliteDefault;
+    }
+
+    // Same defaults as the Engelsystem.
+    $database = array_merge(
+        ['driver' => 'mysql', 'host' => 'localhost', 'database' => 'engelsystem', 'username' => 'root', 'password' => ''],
+        $fromEnv,
+        $fromFile
+    );
+    if (!in_array($database['driver'], ['mysql', 'mariadb'], true)) {
+        throw new RuntimeException('Unsupported database driver "' . $database['driver'] . '" (use mysql or mariadb)');
+    }
+    // MariaDB uses PHP's MySQL driver.
+    return [
+        'dsn' => 'mysql:host=' . $database['host'] . ';dbname=' . $database['database'] . ';charset=utf8mb4',
+        'username' => (string) $database['username'],
+        'password' => (string) $database['password'],
+        'options' => $database['options'] ?? [],
+        'sslmode' => $database['sslmode'] ?? null,
+    ];
+}
+
+/**
+ * For MySQL/MariaDB, 'sslmode' => 'require' makes sure the connection is encrypted
+ * (e.g. together with PDO::MYSQL_ATTR_SSL_CA in 'options'); otherwise nothing is
+ * done with the database. 'prefer' and 'disable' don't enforce anything.
+ */
+function vt_check_sslmode(PDO $db, ?string $sslmode): void
+{
+    if ($sslmode === null || $sslmode === 'prefer' || $sslmode === 'disable') {
+        return;
+    }
+    if ($sslmode !== 'require') {
+        throw new RuntimeException('Unsupported sslmode "' . $sslmode . '" (use require, prefer or disable)');
+    }
+    if (vt_db_driver($db) !== 'mysql') {
+        // Other databases take it in the DSN, e.g. "pgsql:host=...;sslmode=require".
+        throw new RuntimeException('sslmode is only supported for MySQL/MariaDB; put it in the DSN instead');
+    }
+    $cipher = $db->query("SHOW SESSION STATUS LIKE 'Ssl_cipher'")->fetch(PDO::FETCH_NUM);
+    if ($cipher === false || (string) $cipher[1] === '') {
+        throw new RuntimeException('sslmode is "require", but the database connection is not encrypted');
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -54,14 +127,22 @@ function vt_db(): PDO
         }
     }
 
+    $options = $settings['options'] ?? [];
+    if (!is_array($options)) {
+        throw new RuntimeException('Database "options" must be an array of PDO options');
+    }
+    // "+" keeps the numeric PDO option keys (array_merge would renumber them);
+    // the options the app relies on can't be overridden.
     $db = new PDO($dsn, $settings['username'] ?? null, $settings['password'] ?? null, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ] + $options + [
         PDO::ATTR_TIMEOUT => 10,
     ]);
     if (vt_db_driver($db) === 'sqlite') {
         $db->exec('PRAGMA foreign_keys = ON');
     }
+    vt_check_sslmode($db, $settings['sslmode'] ?? null);
 
     vt_ensure_schema($db);
     return $db;
