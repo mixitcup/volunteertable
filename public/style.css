@@ -337,6 +337,63 @@ a {
   background-color: #7A5C00;
 }
 
+/* Anything marked hidden stays hidden, even if a rule gives it a display value. */
+[hidden] {
+  display: none !important;
+}
+
+/* Entries on the Events and Locations tabs */
+
+.event-info-list article,
+.location-info-list article {
+  margin-bottom: 24px;
+  padding: 8px 12px;
+  border-left: 3px solid transparent;
+  transition: 600ms background-color;
+}
+
+.event-info-list h2 {
+  margin: 0 0 8px;
+}
+
+.event-info-list p {
+  margin: 0 0 8px;
+}
+
+.event-meta {
+  color: #666;
+}
+
+/* The entry opened by a link (e.g. clicking an event in the timetable). */
+.event-info-list article.is-highlighted,
+.location-info-list article.is-highlighted {
+  background-color: #FDF0EF;
+  border-left-color: #EC6A5E;
+}
+
+/* Events listed under each location */
+
+.location-event-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.location-event-list li {
+  margin-bottom: 4px;
+}
+
+.location-event-time {
+  display: inline-block;
+  min-width: 7.5em;
+  color: #666;
+  font-variant-numeric: tabular-nums;
+}
+
+.location-event-registration {
+  color: #666;
+}
+
 .event-info-list article.is-past {
   color: #999;
 }
