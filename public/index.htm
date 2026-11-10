@@ -172,9 +172,11 @@
         }
         return fetch('api/app.php?action=' + action, options).then(function(response) {
           return response.json()
-            .catch(function() { return {}; })
             .then(function(result) {
-              return { ok: response.ok, status: response.status, data: result };
+              return { ok: response.ok, status: response.status, data: result, json: true };
+            }, function() {
+              // Not JSON: e.g. an HTML error page, or PHP not running for api/app.php.
+              return { ok: false, status: response.status, data: {}, json: false };
             });
         });
       }
@@ -198,6 +200,21 @@
         node.type = 'button';
         node.addEventListener('click', onClick);
         return node;
+      }
+
+      // Error for a failed API request, with enough detail to find the cause on the server.
+      function loadError(result, action) {
+        var detail;
+        if (!result.json) {
+          detail = 'the server did not answer with data (HTTP ' + result.status + '). ' +
+            'Check that PHP runs for api/app.php and look at the web server’s error log.';
+        } else if (result.data.error === 'server_error') {
+          detail = 'the server had an internal error. Details are in the PHP error log (lines starting with ' +
+            '“[volunteertable]”), or run “php private/check.php” on the server.';
+        } else {
+          detail = 'HTTP ' + result.status + (result.data.error ? ', ' + result.data.error : '') + '.';
+        }
+        return new Error('Could not load the timetable data (' + action + '): ' + detail);
       }
 
       function showNotice(text, isError) {
@@ -1326,7 +1343,7 @@
       function reload() {
         return api('my').then(function(my) {
           if (!my.ok) {
-            throw new Error('Could not load timetable data');
+            throw loadError(my, 'my');
           }
           hasAccess = my.data.access;
           myBookings = my.data.bookings;
@@ -1343,7 +1360,7 @@
 
           return Promise.all([api('events'), admin !== null ? api('admin_users') : null]).then(function(results) {
             if (!results[0].ok) {
-              throw new Error('Could not load timetable data');
+              throw loadError(results[0], 'events');
             }
             data = results[0].data;
             adminUsers = results[1] !== null && results[1].ok ? results[1].data.users : [];
@@ -1421,7 +1438,8 @@
           });
         })
         .catch(function(error) {
-          document.querySelector('.timetable').textContent = error.message;
+          // Shown at the top, so it's visible whichever tab or state the page is in.
+          showNotice(error.message, true);
         });
     </script>
 </body>

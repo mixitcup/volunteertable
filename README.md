@@ -22,6 +22,8 @@ The API finds `private/` through the symlink. If you copy `public/` instead, set
 
 Copy `private/config.example.php` to `private/config.php` and adjust the database, `base_url` and mail settings. Requires PHP 7.4 or newer with PDO.
 
+To check a deployment, run `php private/check.php` on the server: it tests the configuration, database and mail settings and prints what is wrong. Errors of the running app are written to the PHP error log, starting with `[volunteertable]`.
+
 The database can be configured like in the [Engelsystem](https://engelsystem.de/doc/admin/configuration/): with a `'database' => ['driver', 'host', 'database', 'username', 'password']` block in `config.php`, or with the environment variables `MYSQL_TYPE`, `MYSQL_HOST`, `MYSQL_DATABASE`, `MYSQL_USER` and `MYSQL_PASSWORD`. All tables start with `vt_`, so an Engelsystem database can be shared. Without any database configuration, a SQLite file in `private/data/` is used.
 
 For local testing:
