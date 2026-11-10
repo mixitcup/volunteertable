@@ -646,7 +646,9 @@ function vt_send_booking_mail(array $booking, array $event, string $mailToken): 
         . "you are registered for:\n\n"
         . "  {$event['name']}\n"
         . '  ' . vt_format_event_time($event) . "\n"
-        . "  {$event['location_name']}\n\n"
+        . "  {$event['location_name']}\n"
+        . (($event['responsible'] ?? null) !== null ? "  Responsible: {$event['responsible']}\n" : '')
+        . "\n"
         . "To change or cancel your registration, open this link:\n\n"
         . "{$link}\n\n"
         . "Opening the link also shows all your registrations made with this email\n"

@@ -31,7 +31,8 @@ declare(strict_types=1);
  *   POST app.php?action=admin_remove_user { email }  -> { removed }  all registrations of that address
  *   POST app.php?action=admin_save_location { id?, name, url, info }  -> { id }  creates without id
  *   POST app.php?action=admin_delete_location { id } -> { ok } | 409 location_has_events
- *   POST app.php?action=admin_save_event { id?, name, locationId, start, end, capacity, info, url } -> { id }
+ *   POST app.php?action=admin_save_event { id?, name, locationId, start, end, capacity, info, url, responsible }
+ *                                      -> { id }
  *                                      start/end as "YYYY-MM-DDTHH:MM"; capacity null = unlimited
  *   POST app.php?action=admin_delete_event { id }    -> { removedRegistrations }
  *   POST app.php?action=admin_save_page { title, intro } -> { page }  page title and introductory text
@@ -120,6 +121,7 @@ function list_events(): array
             'capacity' => $event['capacity'] === null ? null : (int) $event['capacity'],
             'info' => $event['info'],
             'url' => $event['url'],
+            'responsible' => $event['responsible'],
             'registered' => count($names),
             'attendees' => $names,
         ];
@@ -210,6 +212,20 @@ function input_text(array $input, string $key, int $maxLength): ?string
     }
     $value = trim(str_replace("\r\n", "\n", $value));
     return $value === '' ? null : $value;
+}
+
+/** One line of text (line breaks become spaces) of at most $maxChars characters, or null if empty. */
+function input_line(array $input, string $key, int $maxChars): ?string
+{
+    $value = input_text($input, $key, $maxChars * 4);
+    if ($value === null) {
+        return null;
+    }
+    $value = preg_replace('/\s+/u', ' ', $value);
+    if (preg_match('/\p{C}/u', $value) === 1 || preg_match_all('/./us', $value) > $maxChars) {
+        respond(400, ['error' => 'invalid_text', 'field' => $key]);
+    }
+    return $value;
 }
 
 /** Web links: http(s), mailto, or a relative link such as "#" or "/page". Never javascript: etc. */
@@ -564,6 +580,7 @@ try {
                 'info' => input_text($input, 'info', 5000),
                 'url' => input_url($input, 'url'),
                 'capacity' => $input['capacity'] ?? null,
+                'responsible' => input_line($input, 'responsible', 500),
             ];
             if ($event['ends_at'] <= $event['starts_at']) {
                 respond(400, ['error' => 'end_before_start', 'field' => 'end']);
@@ -577,11 +594,12 @@ try {
                     return ['error' => 'unknown_location', 'field' => 'locationId'];
                 }
                 $values = [$event['name'], $event['location_id'], $event['starts_at'], $event['ends_at'],
-                    $event['capacity'], $event['info'], $event['url']];
+                    $event['capacity'], $event['info'], $event['url'], $event['responsible']];
                 if ($id === null) {
                     $id = vt_new_id();
                     vt_query(
-                        'INSERT INTO vt_events (name, location_id, starts_at, ends_at, capacity, info, url, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                        'INSERT INTO vt_events (name, location_id, starts_at, ends_at, capacity, info, url, responsible, id)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                         array_merge($values, [$id])
                     );
                     return ['id' => $id];
@@ -596,7 +614,8 @@ try {
                     return ['error' => 'capacity_below_registrations', 'field' => 'capacity', 'registered' => $registered];
                 }
                 vt_query(
-                    'UPDATE vt_events SET name = ?, location_id = ?, starts_at = ?, ends_at = ?, capacity = ?, info = ?, url = ? WHERE id = ?',
+                    'UPDATE vt_events SET name = ?, location_id = ?, starts_at = ?, ends_at = ?, capacity = ?, info = ?, url = ?,
+                     responsible = ? WHERE id = ?',
                     array_merge($values, [$id])
                 );
                 return ['id' => $id];

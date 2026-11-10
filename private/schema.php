@@ -24,6 +24,7 @@ function vt_schema_statements(string $driver): array
         )' . $options,
 
         // Start and end are local times as written, e.g. "2026-11-09T09:30:00".
+        // "responsible": names of the people in charge, as free text.
         'CREATE TABLE IF NOT EXISTS vt_events (
             id VARCHAR(32) NOT NULL PRIMARY KEY,
             location_id VARCHAR(32) NOT NULL REFERENCES vt_locations (id),
@@ -32,7 +33,8 @@ function vt_schema_statements(string $driver): array
             ends_at VARCHAR(19) NOT NULL,
             capacity INTEGER NULL,
             info TEXT NULL,
-            url VARCHAR(2000) NULL
+            url VARCHAR(2000) NULL,
+            responsible VARCHAR(500) NULL
         )' . $options,
 
         // Each booking has two tokens: the edit token is shown on the page right
@@ -108,17 +110,39 @@ function vt_schema_statements(string $driver): array
     ];
 }
 
+/**
+ * Columns added to existing tables after their first version, as
+ * [table, column, definition]. Databases from before get them on the next request.
+ */
+function vt_added_columns(): array
+{
+    return [
+        ['vt_events', 'responsible', 'VARCHAR(500) NULL'],
+    ];
+}
+
 function vt_ensure_schema(PDO $db): void
 {
     // Checks the most recently added table; all statements are "IF NOT EXISTS",
     // so databases created by an older version just get the missing tables.
     try {
         $db->query('SELECT 1 FROM vt_texts WHERE 1 = 0');
-        return;
     } catch (PDOException $e) {
-        // Tables missing: create them below.
+        vt_create_tables($db);
     }
 
+    foreach (vt_added_columns() as $added) {
+        [$table, $column, $definition] = $added;
+        try {
+            $db->query("SELECT $column FROM $table WHERE 1 = 0");
+        } catch (PDOException $e) {
+            $db->exec("ALTER TABLE $table ADD COLUMN $column $definition");
+        }
+    }
+}
+
+function vt_create_tables(PDO $db): void
+{
     foreach (vt_schema_statements((string) $db->getAttribute(PDO::ATTR_DRIVER_NAME)) as $statement) {
         $db->exec($statement);
     }
@@ -158,7 +182,8 @@ function vt_import_seed(PDO $db, string $dir): void
         }
 
         $insertEvent = $db->prepare(
-            'INSERT INTO vt_events (id, location_id, name, starts_at, ends_at, capacity, info, url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO vt_events (id, location_id, name, starts_at, ends_at, capacity, info, url, responsible)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $insertBooking = $db->prepare(
             'INSERT INTO vt_bookings (id, event_id, name, email, email_key, edit_token_hash, mail_token_hash, created_at)
@@ -178,6 +203,7 @@ function vt_import_seed(PDO $db, string $dir): void
                 isset($event['capacity']) ? (int) $event['capacity'] : null,
                 $event['info'] ?? null,
                 $event['url'] ?? null,
+                $event['responsible'] ?? null,
             ]);
             foreach ($event['bookings'] ?? [] as $index => $booking) {
                 // Random tokens nobody knows: example bookings can't be edited via link.

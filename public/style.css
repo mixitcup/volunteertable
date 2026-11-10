@@ -1176,3 +1176,12 @@ a:hover {
   background-color: var(--accent-soft);
   box-shadow: 0 0 0 3px rgba(236, 106, 94, 0.18);
 }
+
+/* "Responsible: Anna, Ben" on event cards */
+.event-responsible {
+  margin: 0 0 8px;
+}
+
+.event-responsible-label {
+  color: var(--muted);
+}

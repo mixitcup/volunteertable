@@ -437,6 +437,11 @@
           formatTimeRange(new Date(event.start), new Date(event.end)) + ' · ',
           locationLink(event.location, locationInfoIds)));
 
+        if (event.responsible) {
+          article.appendChild(el('p', 'event-responsible',
+            el('span', 'event-responsible-label', 'Responsible: '), event.responsible));
+        }
+
         var registration = article.appendChild(el('p', 'event-registration'));
         if (event.capacity !== null) {
           var full = event.registered >= event.capacity;
@@ -1004,6 +1009,8 @@
             value: isNew ? local(new Date(start.getTime() + 3600000)) : toInputDateTime(event.end) },
           { key: 'capacity', label: 'Maximum number of people', type: 'number',
             value: isNew ? '' : event.capacity, hint: 'Leave empty for no limit.' },
+          { key: 'responsible', label: 'Responsible', value: isNew ? '' : event.responsible,
+            hint: 'Names of the people in charge, e.g. “Anna, Ben”. Shown to volunteers.' },
           { key: 'info', label: 'Description', type: 'textarea', value: isNew ? '' : event.info },
           { key: 'url', label: 'Website', type: 'url', value: isNew ? '' : event.url }
         ], function(values) {
@@ -1017,7 +1024,8 @@
             // Non-numbers are sent as text so the server reports them as invalid.
             capacity: capacity === '' ? null : (/^\d+$/.test(capacity) ? Number(capacity) : capacity),
             info: values.info,
-            url: values.url
+            url: values.url,
+            responsible: values.responsible
           });
         }, deleteButton);
       }
@@ -1293,14 +1301,14 @@
             columns: [
               { title: 'Event', width: 28 }, { title: 'Start', width: 17 }, { title: 'End', width: 17 },
               { title: 'Location', width: 18 }, { title: 'Maximum', width: 10 }, { title: 'Registered', width: 11 },
-              { title: 'Places left', width: 11 }, { title: 'Who’s coming', width: 40 },
-              { title: 'Description', width: 40 }, { title: 'Website', width: 25 }
+              { title: 'Places left', width: 11 }, { title: 'Responsible', width: 22 },
+              { title: 'Who’s coming', width: 40 }, { title: 'Description', width: 40 }, { title: 'Website', width: 25 }
             ],
             rows: data.events.slice().sort(byStart).map(function(event) {
               return [event.name, parseLocal(event.start), parseLocal(event.end), event.location,
                 event.capacity, event.registered,
                 event.capacity === null ? null : Math.max(event.capacity - event.registered, 0),
-                event.attendees.join(', '), event.info, event.url];
+                event.responsible, event.attendees.join(', '), event.info, event.url];
             })
           },
           {

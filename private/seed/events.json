@@ -80,7 +80,8 @@
         "name": "Hamid",
         "email": "hamid@example.org"
       }
-    ]
+    ],
+    "responsible": "Elif"
   },
   {
     "name": "All-you-can-eat grill",
@@ -113,7 +114,8 @@
         "name": "Ida",
         "email": "ida@example.org"
       }
-    ]
+    ],
+    "responsible": "Finn, Greta"
   },
   {
     "name": "Tokyo Hackathon Livestream",
@@ -134,7 +136,8 @@
         "name": "Hamid",
         "email": "hamid@example.org"
       }
-    ]
+    ],
+    "responsible": "Hamid"
   },
   {
     "name": "Farewell breakfast",
@@ -177,7 +180,8 @@
         "name": "Anna",
         "email": "anna@example.org"
       }
-    ]
+    ],
+    "responsible": "Jonas"
   },
   {
     "name": "Catering",
