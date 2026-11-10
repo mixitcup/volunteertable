@@ -34,15 +34,24 @@ return [
     // Required for sending real mail: the edit links in mails are built from it.
     'base_url' => 'https://example.org/volunteertable',
 
+    // Sender of all mails. Bounces (e.g. mistyped addresses) are returned to it.
     'mail_from' => 'volunteers@example.org',
     'mail_from_name' => 'Volunteer table',
 
-    // Set to null to write mails to the PHP error log instead of sending them.
-    'smtp' => [
-        'host' => 'smtp.example.org',
-        'port' => 587,
-        'secure' => 'tls', // 'tls' (STARTTLS, usually port 587), 'ssl' (usually port 465) or 'none'
-        'username' => 'volunteers@example.org',
-        'password' => '',
-    ],
+    // How mails are sent:
+    //  'mail' – PHP's mail() function, i.e. the web server's own mail system. Needs no
+    //           password; use it if your host supports it (mail_from is passed as "-f").
+    //  'smtp' – via the SMTP server configured below.
+    //  'log'  – not sent, but written to the PHP error log (for testing).
+    // Without this setting: 'smtp' if 'smtp' is set, otherwise 'log'.
+    'mail_method' => 'mail',
+
+    // Only needed for 'mail_method' => 'smtp':
+    // 'smtp' => [
+    //     'host' => 'smtp.example.org',
+    //     'port' => 587,
+    //     'secure' => 'tls', // 'tls' (STARTTLS, usually port 587), 'ssl' (usually port 465) or 'none'
+    //     'username' => 'volunteers@example.org',
+    //     'password' => '',
+    // ],
 ];

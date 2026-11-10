@@ -486,7 +486,7 @@ function vt_site_link(string $queryAndHash, bool $forEmail): ?string
 {
     $base = rtrim((string) vt_config()['base_url'], '/');
     if ($base === '') {
-        if ($forEmail && vt_config()['smtp'] !== null) {
+        if ($forEmail && vt_mail_method() !== 'log') {
             return null;
         }
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -507,17 +507,40 @@ function vt_admin_link(string $token, bool $forEmail): ?string
     return vt_site_link('?admin=' . $token . '#admin-tab', $forEmail);
 }
 
-/** Sends a plain-text mail (or logs it if no SMTP server is configured). Throws on failure. */
+/**
+ * How mails are sent: 'smtp' (via the 'smtp' settings), 'mail' (PHP's mail()
+ * function, i.e. the web server's local mail system) or 'log' (written to the
+ * PHP error log, for testing). Default: 'smtp' if SMTP is configured, else 'log'.
+ */
+function vt_mail_method(): string
+{
+    $config = vt_config();
+    $method = $config['mail_method'] ?? ($config['smtp'] !== null ? 'smtp' : 'log');
+    if (!in_array($method, ['smtp', 'mail', 'log'], true)) {
+        throw new RuntimeException('mail_method must be "smtp", "mail" or "log"');
+    }
+    return $method;
+}
+
+/** Sends a plain-text mail (or logs it, see vt_mail_method()). Throws on failure. */
 function vt_send_mail(string $toEmail, string $toName, string $subject, string $body): void
 {
     $config = vt_config();
-    if ($config['smtp'] === null) {
-        // No SMTP configured: log instead of sending, for local testing.
+    $method = vt_mail_method();
+    if ($method === 'log') {
         error_log("[volunteertable] Mail to {$toEmail}: {$subject}\n{$body}");
         return;
     }
     if (vt_normalize_email($config['mail_from']) === null) {
         throw new RuntimeException('mail_from must be configured to send mails');
+    }
+
+    if ($method === 'mail') {
+        vt_php_mail($config['mail_from'], (string) $config['mail_from_name'], $toEmail, $subject, $body);
+        return;
+    }
+    if ($config['smtp'] === null) {
+        throw new RuntimeException('mail_method is "smtp", but no smtp settings are configured');
     }
 
     vt_smtp_send(
@@ -529,6 +552,31 @@ function vt_send_mail(string $toEmail, string $toName, string $subject, string $
         $subject,
         $body
     );
+}
+
+/**
+ * Sends a mail with PHP's mail(). The sender is also passed as "-f" to sendmail,
+ * so bounces go to mail_from instead of the server's administrators.
+ */
+function vt_php_mail(string $fromEmail, string $fromName, string $toEmail, string $subject, string $body): void
+{
+    // The sender ends up on sendmail's command line: only allow plain addresses,
+    // so it can never smuggle in further sendmail options.
+    if (preg_match('/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/', $fromEmail) !== 1) {
+        throw new RuntimeException('mail_from must be a plain address like name@example.org to send with mail()');
+    }
+
+    $headers = [
+        'From' => vt_mime_header($fromName) . ' <' . vt_smtp_address($fromEmail) . '>',
+        'MIME-Version' => '1.0',
+        'Content-Type' => 'text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding' => 'base64',
+    ];
+    $encodedBody = rtrim(chunk_split(base64_encode(str_replace("\n", "\r\n", $body)), 76, "\r\n"));
+    $sent = mail(vt_smtp_address($toEmail), vt_mime_header($subject), $encodedBody, $headers, '-f ' . $fromEmail);
+    if (!$sent) {
+        throw new RuntimeException('mail() could not hand the mail to the local mail system');
+    }
 }
 
 /** Sends the admin their login link. Throws on failure. */
