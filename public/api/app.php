@@ -14,7 +14,9 @@ declare(strict_types=1);
  *   GET  app.php?action=my      -> { access, bookings: [...], adminExists, admin: {name, email} | null,
  *                                    inviteLink (admins only), page: { title, intro } }
  *                                  bookings belonging to this browser, and whether an admin is logged in
- *   POST app.php?action=book    { eventId, name, email } -> { booking, editLink, mailSent } [access]
+ *   POST app.php?action=book    { eventId, name, email, forSomeoneElse? } -> { booking, editLink, mailSent } [access]
+ *                                 forSomeoneElse: registers another person; not linked to this browser,
+ *                                 no editLink returned, the person always gets the confirmation mail
  *                                 | 409 already_booked | 409 event_full | 404 unknown_event
  *   POST app.php?action=open    { token }            -> { bookingId, emailLinked } | 404 invalid_link
  *                                                       (also gives this browser access)
@@ -300,11 +302,14 @@ function create_booking(string $eventId, string $name, string $email, bool $allo
     return $result + ['editToken' => $editToken, 'mailToken' => $mailToken];
 }
 
-/** Sends the confirmation with the edit link; returns whether that worked. */
-function send_booking_mail(array $created): bool
+/**
+ * Sends the confirmation with the edit link; returns whether that worked.
+ * $registeredBy: 'self', 'someone_else' or 'admin' (changes the wording).
+ */
+function send_booking_mail(array $created, string $registeredBy): bool
 {
     try {
-        vt_send_booking_mail($created['booking'], $created['event'], $created['mailToken']);
+        vt_send_booking_mail($created['booking'], $created['event'], $created['mailToken'], $registeredBy);
         return true;
     } catch (Throwable $e) {
         error_log('[volunteertable] Could not send booking mail: ' . $e->getMessage());
@@ -392,7 +397,18 @@ try {
                 respond(400, ['error' => 'invalid_email']);
             }
 
+            $forSomeoneElse = ($input['forSomeoneElse'] ?? false) === true;
             $result = create_booking($eventId, $name, $email, false);
+
+            if ($forSomeoneElse) {
+                // Registering a friend: it's their registration, so it isn't linked to
+                // this browser and no edit link is returned. They always get the mail
+                // with their own link, so nobody is registered without knowing.
+                respond(201, [
+                    'booking' => ['eventId' => $eventId, 'name' => $name],
+                    'mailSent' => send_booking_mail($result, 'someone_else'),
+                ]);
+            }
 
             // Only this booking is linked to the browser, not the email address:
             // nobody has proven yet that they can read mail sent to it.
@@ -401,7 +417,7 @@ try {
             respond(201, [
                 'booking' => public_booking($result['booking']),
                 'editLink' => vt_edit_link($result['editToken'], false),
-                'mailSent' => send_booking_mail($result),
+                'mailSent' => send_booking_mail($result, 'self'),
             ]);
 
         case 'admin_add_booking':
@@ -423,7 +439,7 @@ try {
             $sendMail = ($input['sendMail'] ?? true) !== false;
             respond(201, [
                 'booking' => public_booking($result['booking']),
-                'mailSent' => $sendMail ? send_booking_mail($result) : false,
+                'mailSent' => $sendMail ? send_booking_mail($result, 'admin') : false,
             ]);
 
         case 'open':

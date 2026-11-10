@@ -1228,3 +1228,23 @@ a:hover {
   background-color: #F4F4F4;
   color: var(--muted);
 }
+
+/* "+ Add me" and "+ Add someone else" side by side */
+.event-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.event-buttons:empty {
+  display: none;
+}
+
+.event-actions > * + * {
+  margin-top: 10px;
+}
+
+.form-intro {
+  margin: 0 0 10px;
+  color: var(--muted);
+}

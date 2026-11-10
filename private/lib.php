@@ -633,22 +633,35 @@ function vt_format_event_time(array $event): string
     return $start->format('D j M Y, H:i') . ' – ' . $end->format($sameDay ? 'H:i' : 'D j M Y, H:i');
 }
 
-/** Sends the confirmation with the edit link. Throws on failure. */
-function vt_send_booking_mail(array $booking, array $event, string $mailToken): void
+/**
+ * Sends the confirmation with the edit link. Throws on failure.
+ * $registeredBy: 'self', 'someone_else' or 'admin'; people registered by others
+ * are told so, and that they can cancel if it wasn't intended.
+ */
+function vt_send_booking_mail(array $booking, array $event, string $mailToken, string $registeredBy = 'self'): void
 {
     $link = vt_edit_link($mailToken, true);
     if ($link === null) {
         throw new RuntimeException('base_url must be configured to send mails');
     }
 
+    $intro = [
+        'self' => "you are registered for:\n\n",
+        'someone_else' => "someone has registered you for:\n\n",
+        'admin' => "an organizer has registered you for:\n\n",
+    ][$registeredBy] ?? "you are registered for:\n\n";
+    $notIntended = $registeredBy === 'self' ? ''
+        : "If you didn't expect this or can't make it, you can cancel with the link below.\n\n";
+
     $subject = 'Your registration: ' . $event['name'];
     $body = "Hello {$booking['name']},\n\n"
-        . "you are registered for:\n\n"
+        . $intro
         . "  {$event['name']}\n"
         . '  ' . vt_format_event_time($event) . "\n"
         . "  {$event['location_name']}\n"
         . (($event['responsible'] ?? null) !== null ? "  Responsible: {$event['responsible']}\n" : '')
         . "\n"
+        . $notIntended
         . "To change or cancel your registration, open this link:\n\n"
         . "{$link}\n\n"
         . "Opening the link also shows all your registrations made with this email\n"

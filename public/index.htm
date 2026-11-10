@@ -108,6 +108,7 @@
       var timetableScrolledToNow = false;
       // UI state that survives re-rendering after each change.
       var openFormEventId = null;
+      var openOtherFormEventId = null;  // event whose "+ Add someone else" form is open
       var editingBookingId = null;
       var confirmations = {};
 
@@ -296,9 +297,9 @@
           article.classList.toggle('is-past', past);
           article.classList.toggle('is-current', !past && Number(article.dataset.start) <= now);
           // Registering for an event that is over makes no sense.
-          var addButton = article.querySelector('.add-me-button');
-          if (addButton !== null && past) {
-            addButton.hidden = true;
+          var addButtons = article.querySelector('.event-buttons');
+          if (addButtons !== null && past) {
+            addButtons.hidden = true;
           }
         });
       }
@@ -500,7 +501,6 @@
           if (confirmation) {
             actions.appendChild(renderConfirmation(confirmation));
           }
-          return actions;
         }
 
         if (isPast(event)) {
@@ -508,31 +508,63 @@
         }
 
         var full = event.capacity !== null && event.registered >= event.capacity;
-        if (openFormEventId === event.id && !full) {
-          actions.appendChild(renderBookingForm(event));
-        } else {
-          var addButton = button(full ? 'Full' : '+ Add me', 'button add-me-button', function() {
-            openFormEventId = event.id;
-            var form = renderBookingForm(event);
-            actions.replaceChild(form, addButton);
-            form.querySelector('input').focus();
-          });
-          addButton.disabled = full;
-          actions.appendChild(addButton);
+        var buttons = actions.appendChild(el('div', 'event-buttons'));
+
+        // Registering yourself.
+        if (myBooking === null) {
+          if (openFormEventId === event.id && !full) {
+            actions.appendChild(renderBookingForm(event, false));
+          } else {
+            var addButton = button(full ? 'Full' : '+ Add me', 'button add-me-button', function() {
+              openFormEventId = event.id;
+              openOtherFormEventId = null;
+              renderAll();
+              focusForm(event, false);
+            });
+            addButton.disabled = full;
+            buttons.appendChild(addButton);
+          }
+        }
+
+        // Registering someone else (admins use "+ Add person" in the list of names instead).
+        if (admin === null && !full) {
+          if (openOtherFormEventId === event.id) {
+            actions.appendChild(renderBookingForm(event, true));
+          } else {
+            buttons.appendChild(button('+ Add someone else', 'button button-secondary add-other-button', function() {
+              openOtherFormEventId = event.id;
+              openFormEventId = null;
+              renderAll();
+              focusForm(event, true);
+            }));
+          }
         }
         return actions;
       }
 
-      function renderBookingForm(event) {
-        var contact = loadContact();
-        var form = el('form', 'booking-form');
+      // The form that was just opened on an event card gets the cursor.
+      function focusForm(event, forSomeoneElse) {
+        var card = document.getElementById(getEventInfoId(event));
+        var form = card && card.querySelector(forSomeoneElse ? '.booking-form-other' : '.booking-form');
+        if (form) {
+          form.querySelector('input').focus();
+        }
+      }
+
+      // Registering for an event: yourself (prefilled with your last name and email,
+      // linked to this browser), or someone else (empty, not linked to this browser;
+      // they get a confirmation email with their own link instead).
+      function renderBookingForm(event, forSomeoneElse) {
+        var contact = forSomeoneElse ? { name: '', email: '' } : loadContact();
+        var form = el('form', forSomeoneElse ? 'booking-form booking-form-other' : 'booking-form');
         form.noValidate = true;
 
         var nameInput = el('input');
         nameInput.name = 'name';
         nameInput.required = true;
         nameInput.maxLength = 80;
-        nameInput.autocomplete = 'name';
+        // Don't offer the browser's saved own name and address for someone else.
+        nameInput.autocomplete = forSomeoneElse ? 'off' : 'name';
         nameInput.value = contact.name;
 
         var emailInput = el('input');
@@ -540,19 +572,27 @@
         emailInput.type = 'email';
         emailInput.required = true;
         emailInput.maxLength = 254;
-        emailInput.autocomplete = 'email';
+        emailInput.autocomplete = forSomeoneElse ? 'off' : 'email';
         emailInput.value = contact.email;
 
-        var submit = el('button', 'button', 'Register');
+        var submit = el('button', 'button', forSomeoneElse ? 'Register them' : 'Register');
         submit.type = 'submit';
         var message = el('div', 'form-message is-error');
         message.setAttribute('role', 'alert');
         message.hidden = true;
 
-        form.appendChild(el('label', null, 'Name (shown to others)', nameInput));
-        form.appendChild(el('label', null, 'Email address (not shown; we send your edit link here)', emailInput));
+        if (forSomeoneElse) {
+          form.appendChild(el('p', 'form-intro', 'Register a friend or colleague for this event.'));
+          form.appendChild(el('label', null, 'Their name (shown to others)', nameInput));
+          form.appendChild(el('label', null,
+            'Their email address (not shown; we send them a confirmation with a link to change or cancel)', emailInput));
+        } else {
+          form.appendChild(el('label', null, 'Name (shown to others)', nameInput));
+          form.appendChild(el('label', null, 'Email address (not shown; we send your edit link here)', emailInput));
+        }
         form.appendChild(el('div', 'form-buttons', submit, button('Cancel', 'button button-secondary', function() {
           openFormEventId = null;
+          openOtherFormEventId = null;
           renderAll();
         })));
         form.appendChild(message);
@@ -570,7 +610,7 @@
           var name = nameInput.value.trim();
           var email = emailInput.value.trim();
           if (name === '') {
-            showMessage(['Please enter your name.']);
+            showMessage([forSomeoneElse ? 'Please enter their name.' : 'Please enter your name.']);
             return;
           }
           if (email === '' || !emailInput.checkValidity()) {
@@ -579,9 +619,16 @@
           }
 
           submit.disabled = true;
-          api('book', { eventId: event.id, name: name, email: email })
+          api('book', { eventId: event.id, name: name, email: email, forSomeoneElse: forSomeoneElse })
             .then(function(result) {
               submit.disabled = false;
+              if (result.ok && forSomeoneElse) {
+                openOtherFormEventId = null;
+                showNotice(name + ' has been registered for “' + event.name + '”' + (result.data.mailSent ?
+                  '. We sent them a confirmation email with a link to change or cancel.' :
+                  ', but the confirmation email could not be sent.'), !result.data.mailSent);
+                return reload();
+              }
               if (result.ok) {
                 saveContact(name, email);
                 openFormEventId = null;
@@ -593,7 +640,9 @@
                 return reload();
               }
               var error = result.data.error;
-              if (error === 'already_booked') {
+              if (error === 'already_booked' && forSomeoneElse) {
+                showMessage(['This email address is already registered for this event.']);
+              } else if (error === 'already_booked') {
                 showMessage(['This email address is already registered for this event. ', renderResendButton(event, email, showMessage)]);
               } else if (error === 'event_full') {
                 showMessage(['Sorry, this event has just filled up.']);
@@ -1686,6 +1735,7 @@
       function isUserBusy() {
         var active = document.activeElement;
         return openFormEventId !== null ||
+          openOtherFormEventId !== null ||
           editingBookingId !== null ||
           document.getElementById('editor').open ||
           (active !== null && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) && !active.readOnly);
