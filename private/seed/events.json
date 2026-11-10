@@ -178,5 +178,36 @@
         "email": "anna@example.org"
       }
     ]
+  },
+  {
+    "name": "Catering",
+    "location": "Tokyo",
+    "start": "2026-11-09T12:00:00",
+    "end": "2026-11-09T14:00:00",
+    "info": "Serve snacks and drinks to the hackers.",
+    "capacity": 4,
+    "bookings": [
+      {
+        "name": "Jonas",
+        "email": "jonas@example.org"
+      }
+    ]
+  },
+  {
+    "name": "Livestream support",
+    "location": "Tokyo",
+    "start": "2026-11-09T13:00:00",
+    "end": "2026-11-09T15:00:00",
+    "capacity": 2,
+    "bookings": []
+  },
+  {
+    "name": "Judging",
+    "location": "Tokyo",
+    "start": "2026-11-09T18:00:00",
+    "end": "2026-11-09T20:30:00",
+    "info": "Help the jury collect the votes.",
+    "capacity": 3,
+    "bookings": []
   }
 ]

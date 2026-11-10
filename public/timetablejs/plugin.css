@@ -467,3 +467,10 @@
 .location-event-list li.is-current {
   font-weight: 700;
 }
+
+/* Rows with overlapping events are taller (one lane per 46px, set by plugin.js);
+   a faint line separates the lanes. */
+.timetable ul.room-timeline li.has-overlaps {
+  background-image: repeating-linear-gradient(to bottom,
+    transparent 0, transparent 45px, rgba(0, 0, 0, 0.06) 45px, rgba(0, 0, 0, 0.06) 46px);
+}

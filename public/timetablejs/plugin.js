@@ -30,6 +30,9 @@ Timetable.Renderer = function(tt) {
 // narrower, so more of the day fits. The grid in plugin.css follows via --hour-width.
 Timetable.HOUR_WIDTH = 96;
 Timetable.HOUR_WIDTH_NARROW = 72;
+// Height of one lane in a location's row, in pixels (matches plugin.css). Events
+// that overlap in time at the same location are shown in lanes below each other.
+Timetable.ROW_HEIGHT = 46;
 Timetable.NARROW_SCREEN = '(max-width: 600px)';
 // How often the current-time line and past/current markers are refreshed.
 Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
@@ -277,10 +280,47 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				var asideULNode = asideNode.appendChild(document.createElement('ul'));
 				appendRowHeaders(asideULNode);
 			}
+			/*
+			 * Puts overlapping events of each location into lanes: events sorted by
+			 * start go into the first lane that is free by then. Returns, per location,
+			 * the number of lanes, and the lane of each event (by its index).
+			 */
+			function computeLanes() {
+				var result = { lanesByLocation: {}, laneByEvent: [] };
+				timetable.locations.forEach(function(location) {
+					var indexes = [];
+					timetable.events.forEach(function(event, index) {
+						if (event.location === location) {
+							indexes.push(index);
+						}
+					});
+					indexes.sort(function(a, b) {
+						return timetable.events[a].startDate - timetable.events[b].startDate ||
+							timetable.events[a].endDate - timetable.events[b].endDate;
+					});
+
+					var laneEnds = [];
+					indexes.forEach(function(index) {
+						var event = timetable.events[index];
+						var lane = 0;
+						while (lane < laneEnds.length && laneEnds[lane] > event.startDate) {
+							lane++;
+						}
+						laneEnds[lane] = event.endDate;
+						result.laneByEvent[index] = lane;
+					});
+					result.lanesByLocation[location] = Math.max(laneEnds.length, 1);
+				});
+				return result;
+			}
+			function rowHeight(location) {
+				return lanes.lanesByLocation[location] * Timetable.ROW_HEIGHT + 'px';
+			}
 			function appendRowHeaders(ulNode) {
 				for (var k=0; k<timetable.locations.length; k++) {
 					var liNode = ulNode.appendChild(document.createElement('li'));
 					var location = timetable.locations[k];
+					liNode.style.height = rowHeight(location);
 					if (hasLocationInfo(location)) {
 						appendLocationInfoLink(liNode, location);
 					} else {
@@ -469,18 +509,22 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				ulNode.className = 'room-timeline';
 				for (var k=0; k<timetable.locations.length; k++) {
 					var liNode = ulNode.appendChild(document.createElement('li'));
-					appendLocationEvents(timetable.locations[k], liNode);/**/
+					liNode.style.height = rowHeight(timetable.locations[k]);
+					if (lanes.lanesByLocation[timetable.locations[k]] > 1) {
+						liNode.classList.add('has-overlaps');
+					}
+					appendLocationEvents(timetable.locations[k], liNode);
 				}
 			}
 			function appendLocationEvents(location, node) {
 				for (var k=0; k<timetable.events.length; k++) {
 					var event = timetable.events[k];
 					if (event.location === location) {
-						appendEvent(event, node);
+						appendEvent(event, node, lanes.laneByEvent[k]);
 					}
 				}
 			}
-			function appendEvent(event, node) {
+			function appendEvent(event, node, lane) {
 				var hasOptions = event.options !== undefined;
 				var hasURL, hasAdditionalClass, hasDataAttributes, hasClickHandler = false;
 
@@ -515,6 +559,7 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				eventNode.className = hasAdditionalClass ? 'time-entry ' + event.options.class : 'time-entry';
 				var left = layout.positionOf(event.startDate);
 				eventNode.style.left = left + 'px';
+				eventNode.style.top = lane * Timetable.ROW_HEIGHT + 'px';
 				eventNode.style.width = Math.max(layout.positionOf(event.endDate) - left, 0) + 'px';
 				smallNode.textContent = event.name;
 				trackEventNode(event, eventNode);
@@ -564,6 +609,7 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 			var trackedEvents = [];
 			var nowNodes = {};
 			var layout = createLayout(timetable, new Date());
+			var lanes = computeLanes();
 			var container = document.querySelector(selector);
 			checkContainerPrecondition(container);
 			emptyNode(container);
