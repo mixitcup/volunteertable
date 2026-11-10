@@ -379,7 +379,8 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 					if (links.url !== undefined) {
 						var locationLinkNode = infoNode.appendChild(document.createElement('p'));
 						var locationAnchorNode = locationLinkNode.appendChild(document.createElement('a'));
-						locationAnchorNode.textContent = '> Location';
+						locationAnchorNode.className = 'external-link';
+						locationAnchorNode.textContent = 'Map & directions';
 						locationAnchorNode.href = links.url;
 					}
 					if (links.info !== undefined) {

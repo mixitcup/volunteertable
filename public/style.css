@@ -1,7 +1,7 @@
 body {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: #333;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 a {
@@ -9,13 +9,14 @@ a {
 }
 
 .row-heading {
-  font-weight: 500;
-  font-size: 0.7em;
+  font-weight: 600;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .timetable .time-label {
-  font-size: 0.8em;
+  font-size: var(--fs-xs);
   font-weight: 500;
 }
 
@@ -139,7 +140,7 @@ a {
 
 .hint {
   margin: 8px 0 0;
-  font-size: 0.9em;
+  font-size: var(--fs-sm);
   color: #666;
 }
 
@@ -159,7 +160,7 @@ a {
   padding: 2px 8px;
   border-radius: 10px;
   background-color: #EFEFEF;
-  font-size: 0.9em;
+  font-size: var(--fs-sm);
 }
 
 .event-attendees .attendees-label {
@@ -248,7 +249,7 @@ a {
   flex: 1 1 auto;
   margin-top: 0;
   font-family: monospace;
-  font-size: 0.85em;
+  font-size: var(--fs-sm);
   background-color: white;
 }
 
@@ -262,7 +263,7 @@ a {
   border-radius: 9px;
   background-color: #EC6A5E;
   color: white;
-  font-size: 0.75em;
+  font-size: var(--fs-xs);
   line-height: 1.5em;
   text-align: center;
 }
@@ -285,7 +286,7 @@ a {
 
 .my-event-list h2 {
   margin: 0 0 6px;
-  font-size: 1.2em;
+  font-size: var(--fs-xl);
 }
 
 .my-event-list p {
@@ -409,7 +410,7 @@ a {
   margin-left: 8px;
   padding: 1px 6px;
   border-radius: 3px;
-  font-size: 0.5em;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   vertical-align: middle;
@@ -490,11 +491,11 @@ a {
 
 .admin-user h2 {
   margin: 0 0 6px;
-  font-size: 1.1em;
+  font-size: var(--fs-lg);
 }
 
 .admin-user-email {
-  font-size: 0.85em;
+  font-size: var(--fs-sm);
   font-weight: normal;
   color: #666;
 }
@@ -530,7 +531,7 @@ a {
 
 .admin-remove-user {
   padding: 3px 10px;
-  font-size: 0.85em;
+  font-size: var(--fs-sm);
 }
 
 /* Editing locations and events (admins) */
@@ -542,7 +543,7 @@ a {
 .admin-edit-button {
   margin-left: 10px;
   padding: 2px 10px;
-  font-size: 0.55em;
+  font-size: var(--fs-sm);
   vertical-align: middle;
 }
 
@@ -557,7 +558,7 @@ a {
 
 .location-admin h2 {
   margin: 0 0 8px;
-  font-size: 1.1em;
+  font-size: var(--fs-lg);
 }
 
 .location-admin-list {
@@ -585,7 +586,7 @@ a {
 
 .location-admin-list .admin-edit-button {
   margin-left: 0;
-  font-size: 0.85em;
+  font-size: var(--fs-sm);
 }
 
 .editor-dialog {
@@ -640,7 +641,7 @@ a {
 .field-hint {
   display: block;
   margin-top: 3px;
-  font-size: 0.85em;
+  font-size: var(--fs-sm);
   font-weight: normal;
   color: #666;
 }
@@ -673,7 +674,7 @@ a {
 
 .admin-link-box h2 {
   margin: 0 0 6px;
-  font-size: 1.1em;
+  font-size: var(--fs-lg);
 }
 
 .admin-link-box p {
@@ -799,7 +800,7 @@ body.no-access .tab-panel {
 
   .hero-unit h1 {
     margin: 12px 0 8px;
-    font-size: 1.6em;
+    font-size: var(--fs-2xl-narrow);
   }
 
   /* One row of tabs that can be swiped sideways, instead of several wrapped rows. */
@@ -862,4 +863,316 @@ body.no-access .tab-panel {
   .admin-user {
     padding: 8px 0 8px 10px;
   }
+}
+
+/* ==========================================================================
+ * Visual design: shared colours, cards, typography
+ * ========================================================================== */
+
+:root {
+  --accent: #EC6A5E;
+  --accent-dark: #C2392B;
+  --accent-soft: #FDF0EF;
+  --text: #2A2A2A;
+  --muted: #6B6B6B;
+  --border: #E6E6E6;
+  --card: #FFFFFF;
+  --card-muted: #FAFAFA;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  /* Font sizes, relative to the 16px base (rem), so they don't shrink when nested.
+     Nothing is smaller than 12px. */
+  --fs-xs: 0.75rem;          /* 12px: badges, counters, timetable labels */
+  --fs-sm: 0.875rem;         /* 14px: hints, names, small buttons */
+  --fs-md: 1.0625rem;        /* 17px: introduction */
+  --fs-lg: 1.125rem;         /* 18px: box headings */
+  --fs-xl: 1.25rem;          /* 20px: event and location titles */
+  --fs-2xl: 2rem;            /* 32px: page title */
+  --fs-2xl-narrow: 1.625rem; /* 26px: page title on phones */
+}
+
+body {
+  /* The device's own interface font: crisp everywhere, nothing to download. */
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent-dark);
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Links leaving the page get an arrow. */
+.external-link::after {
+  content: ' ↗';
+}
+
+:focus-visible {
+  outline: 3px solid rgba(236, 106, 94, 0.45);
+  outline-offset: 2px;
+}
+
+/* Header */
+
+.hero-unit h1 {
+  margin: 16px 0 6px;
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+#page-intro {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+
+/* Tabs */
+
+.tabs a {
+  font-weight: 600;
+  transition: color 150ms, border-color 150ms;
+}
+
+/* Buttons */
+
+.button {
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background-color 150ms, box-shadow 150ms;
+}
+
+.button:not(:disabled):hover {
+  box-shadow: 0 2px 6px rgba(194, 57, 43, 0.25);
+}
+
+.button-secondary:not(:disabled):hover {
+  box-shadow: none;
+}
+
+/* Cards: events, locations, my events, people (admin) */
+
+.event-info-list article,
+.location-info-list article,
+.my-event-list article,
+.admin-user {
+  margin-bottom: 14px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--card);
+  box-shadow: var(--shadow);
+  transition: background-color 600ms, border-color 600ms, box-shadow 600ms;
+}
+
+.event-info-list h2,
+.location-info-list h2,
+.my-event-list h2 {
+  margin: 0 0 4px;
+  font-size: var(--fs-xl);
+  line-height: 1.25;
+}
+
+.event-meta {
+  margin-bottom: 10px !important;
+  color: var(--muted);
+}
+
+/* The entry opened by a link: accent border and a soft glow. */
+.event-info-list article.is-highlighted,
+.location-info-list article.is-highlighted,
+.my-event-list article.is-highlighted {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(236, 106, 94, 0.18);
+}
+
+/* Past entries: quieter, without the shadow. */
+.event-info-list article.is-past,
+.my-event-list article.is-past {
+  background-color: var(--card-muted);
+  box-shadow: none;
+}
+
+.event-info-list article.is-past h2 {
+  text-decoration-thickness: 1px;
+}
+
+/* "My events" cards keep a coloured edge for upcoming events. */
+.my-event-list article {
+  border-left: 4px solid var(--accent);
+}
+
+.my-event-list article.is-past {
+  border-left-color: var(--border);
+}
+
+/* People in the admin list */
+.admin-user {
+  padding: 12px 16px;
+}
+
+.admin-user h2 {
+  margin: 0;
+}
+
+.admin-user-header {
+  margin-bottom: 6px;
+}
+
+/* Registration count with a fill bar */
+
+.event-registration {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.capacity-meter {
+  flex: none;
+  width: 80px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background-color: #ECECEC;
+}
+
+.capacity-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background-color: var(--accent);
+}
+
+.capacity-meter.is-full .capacity-meter-fill {
+  background-color: #9E9E9E;
+}
+
+.is-past .capacity-meter-fill {
+  background-color: #BDBDBD;
+}
+
+/* Names of people coming */
+
+.event-attendees li {
+  background-color: #F0F0F0;
+  color: var(--text);
+}
+
+.is-past .event-attendees li {
+  color: var(--muted);
+}
+
+/* Folded "Past events" section */
+
+.past-events {
+  margin-top: 28px;
+}
+
+.past-events > summary {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.past-events > summary::-webkit-details-marker {
+  display: none;
+}
+
+.past-events > summary::before {
+  content: '▸ ';
+}
+
+.past-events[open] > summary::before {
+  content: '▾ ';
+}
+
+.past-events > summary:hover {
+  background-color: #F2F2F2;
+  color: var(--text);
+}
+
+.empty-state {
+  padding: 24px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Boxes and forms share the card look */
+
+.booking-form,
+.location-admin,
+.admin-link-box,
+.access-gate,
+.booking-confirmation,
+.admin-setup .booking-form {
+  border-radius: var(--radius);
+}
+
+.notice,
+.form-message {
+  border-radius: 8px;
+}
+
+.registered-badge {
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* Timetable: softer event blocks */
+
+.timetable .time-entry {
+  border-radius: 5px;
+}
+
+.timetable .time-entry small {
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .hero-unit h1 {
+    font-size: var(--fs-2xl-narrow);
+  }
+
+  .event-info-list article,
+  .location-info-list article,
+  .my-event-list article {
+    padding: 12px 14px;
+  }
+}
+
+/* No extra space below the last line inside a card. */
+.event-info-list article > :last-child,
+.location-info-list article > :last-child,
+.my-event-list article > :last-child,
+.event-actions > :last-child {
+  margin-bottom: 0;
+}
+
+.event-actions:empty {
+  display: none;
+}
+
+/* The highlight also wins over the quieter look of past entries. */
+.event-info-list article.is-highlighted.is-past,
+.my-event-list article.is-highlighted.is-past {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(236, 106, 94, 0.18);
 }

@@ -155,6 +155,11 @@
           node.classList.remove('is-highlighted');
         });
         if (target !== null && target !== panel) {
+          // Entries in a folded section (e.g. past events) are unfolded first.
+          var folded = target.closest('details');
+          if (folded !== null) {
+            folded.open = true;
+          }
           target.classList.add('is-highlighted');
           target.scrollIntoView({ block: 'start' });
         } else {
@@ -372,70 +377,106 @@
        * Event info tab
        * ------------------------------------------------------------------ */
 
+      // Whether the "Past events" section is unfolded (kept when the list is redrawn).
+      var pastEventsOpen = false;
+
+      // Upcoming (and ongoing) events first; past ones folded away at the end.
       function renderEventInfo(locationInfoIds) {
         var list = document.querySelector('.event-info-list');
         list.textContent = '';
 
-        data.events
-          .slice()
-          .sort(function(a, b) { return new Date(a.start) - new Date(b.start); })
-          .forEach(function(event) {
-            var article = list.appendChild(el('article'));
-            article.id = getEventInfoId(event);
-            article.dataset.start = new Date(event.start).getTime();
-            article.dataset.end = new Date(event.end).getTime();
+        var sorted = data.events.slice().sort(function(a, b) { return new Date(a.start) - new Date(b.start); });
+        var upcoming = sorted.filter(function(event) { return !isPast(event); });
+        var past = sorted.filter(isPast);
 
-            var heading = article.appendChild(el('h2', null, event.name));
-            if (admin !== null) {
-              heading.appendChild(button('Edit', 'button button-secondary admin-edit-button', function() {
-                openEventEditor(event);
-              }));
-            }
-            article.appendChild(el('p', 'event-meta',
-              formatTimeRange(new Date(event.start), new Date(event.end)) + ' · ',
-              locationLink(event.location, locationInfoIds)));
+        if (upcoming.length === 0) {
+          list.appendChild(el('p', 'empty-state', past.length > 0 ? 'All events are over.' : 'There are no events yet.'));
+        }
+        upcoming.forEach(function(event) {
+          list.appendChild(renderEventCard(event, locationInfoIds));
+        });
 
-            var registration = article.appendChild(el('p', 'event-registration'));
-            if (event.capacity !== null) {
-              var full = event.registered >= event.capacity;
-              registration.textContent = event.registered + ' of ' + event.capacity + ' registered' +
-                (full ? ' (full)' : ', ' + (event.capacity - event.registered) + ' places left');
-            } else {
-              registration.textContent = event.registered + ' registered';
-            }
-
-            if (event.attendees.length > 0) {
-              var attendees = article.appendChild(el('ul', 'event-attendees', el('li', 'attendees-label', 'Who’s coming:')));
-              if (admin !== null) {
-                // Admins see who is behind each name and can remove people.
-                getAdminBookings(event.id).forEach(function(booking) {
-                  var chip = attendees.appendChild(el('li', 'is-removable', booking.name,
-                    button('×', 'remove-chip-button', function() {
-                      removeBooking(booking, event);
-                    })));
-                  chip.title = booking.email;
-                  chip.lastChild.setAttribute('aria-label', 'Remove ' + booking.name + ' from this event');
-                });
-              } else {
-                event.attendees.forEach(function(name) {
-                  attendees.appendChild(el('li', null, name));
-                });
-              }
-            }
-
-            if (event.info) {
-              article.appendChild(el('p', null, event.info));
-            }
-            if (event.url) {
-              var urlLink = el('a', null, '> Event website');
-              urlLink.href = event.url;
-              article.appendChild(el('p', null, urlLink));
-            }
-
-            article.appendChild(renderEventActions(event));
+        if (past.length > 0) {
+          var details = list.appendChild(el('details', 'past-events',
+            el('summary', null, 'Past events (' + past.length + ')')));
+          details.open = pastEventsOpen;
+          details.addEventListener('toggle', function() {
+            pastEventsOpen = details.open;
           });
+          past.forEach(function(event) {
+            details.appendChild(renderEventCard(event, locationInfoIds));
+          });
+        }
 
         updateEventTimes();
+      }
+
+      // A small bar showing how full an event is.
+      function capacityMeter(event) {
+        var meter = el('span', 'capacity-meter', el('span', 'capacity-meter-fill'));
+        var ratio = Math.min(event.registered / event.capacity, 1);
+        meter.firstChild.style.width = Math.round(ratio * 100) + '%';
+        meter.classList.toggle('is-full', event.registered >= event.capacity);
+        meter.setAttribute('aria-hidden', 'true');
+        return meter;
+      }
+
+      function renderEventCard(event, locationInfoIds) {
+        var article = el('article');
+        article.id = getEventInfoId(event);
+        article.dataset.start = new Date(event.start).getTime();
+        article.dataset.end = new Date(event.end).getTime();
+
+        var heading = article.appendChild(el('h2', null, event.name));
+        if (admin !== null) {
+          heading.appendChild(button('Edit', 'button button-secondary admin-edit-button', function() {
+            openEventEditor(event);
+          }));
+        }
+        article.appendChild(el('p', 'event-meta',
+          formatTimeRange(new Date(event.start), new Date(event.end)) + ' · ',
+          locationLink(event.location, locationInfoIds)));
+
+        var registration = article.appendChild(el('p', 'event-registration'));
+        if (event.capacity !== null) {
+          var full = event.registered >= event.capacity;
+          registration.appendChild(capacityMeter(event));
+          registration.appendChild(document.createTextNode(event.registered + ' of ' + event.capacity + ' registered' +
+            (full ? ' (full)' : ', ' + (event.capacity - event.registered) + ' places left')));
+        } else {
+          registration.textContent = event.registered + ' registered';
+        }
+
+        if (event.attendees.length > 0) {
+          var attendees = article.appendChild(el('ul', 'event-attendees', el('li', 'attendees-label', 'Who’s coming:')));
+          if (admin !== null) {
+            // Admins see who is behind each name and can remove people.
+            getAdminBookings(event.id).forEach(function(booking) {
+              var chip = attendees.appendChild(el('li', 'is-removable', booking.name,
+                button('×', 'remove-chip-button', function() {
+                  removeBooking(booking, event);
+                })));
+              chip.title = booking.email;
+              chip.lastChild.setAttribute('aria-label', 'Remove ' + booking.name + ' from this event');
+            });
+          } else {
+            event.attendees.forEach(function(name) {
+              attendees.appendChild(el('li', null, name));
+            });
+          }
+        }
+
+        if (event.info) {
+          article.appendChild(el('p', null, event.info));
+        }
+        if (event.url) {
+          var urlLink = el('a', 'external-link', 'Event website');
+          urlLink.href = event.url;
+          article.appendChild(el('p', null, urlLink));
+        }
+
+        article.appendChild(renderEventActions(event));
+        return article;
       }
 
       function renderEventActions(event) {
