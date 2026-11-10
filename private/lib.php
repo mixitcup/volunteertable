@@ -310,6 +310,50 @@ function vt_session_admin(?string $session): ?array
     return $admin === false ? null : $admin;
 }
 
+/* ---------------------------------------------------------------------------
+ * Access: only invited browsers may see and use the page.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The shared invitation token that all volunteers get. Unlike personal links
+ * it is stored in plain text, so the admin can always look it up and share it.
+ */
+function vt_invite_token(): string
+{
+    $token = vt_query("SELECT value FROM vt_settings WHERE name = 'invite_token'")->fetchColumn();
+    if ($token !== false) {
+        return $token;
+    }
+    try {
+        vt_query("INSERT INTO vt_settings (name, value) VALUES ('invite_token', ?)", [vt_new_token()]);
+    } catch (PDOException $e) {
+        // Created at the same moment by another request; use that one.
+    }
+    return (string) vt_query("SELECT value FROM vt_settings WHERE name = 'invite_token'")->fetchColumn();
+}
+
+function vt_invite_link(): ?string
+{
+    return vt_site_link('?invite=' . vt_invite_token(), false);
+}
+
+function vt_has_access(?string $session): bool
+{
+    if ($session === null) {
+        return false;
+    }
+    return vt_query('SELECT 1 FROM vt_session_access WHERE session_hash = ?', [$session])->fetchColumn() !== false
+        || vt_session_admin($session) !== null;
+}
+
+/** Gives this browser access (starting a session if needed). */
+function vt_grant_access(): string
+{
+    $session = vt_session(true);
+    vt_insert_link('vt_session_access', ['session_hash' => $session]);
+    return $session;
+}
+
 /** Logs the admin in in this browser. */
 function vt_login_admin(string $adminId): void
 {

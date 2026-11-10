@@ -4,19 +4,26 @@ declare(strict_types=1);
 /*
  * Volunteer table API
  *
- *   GET  app.php?action=events  -> { locations: [...], events: [...] }  (with attendee names)
- *   GET  app.php?action=my      -> { bookings: [...], adminExists, admin: {name, email} | null }
+ * Access: only browsers that opened the shared invitation link (index.htm?invite=TOKEN),
+ * an edit link of a registration or an admin link may see events and register.
+ * Actions marked [access] answer 403 access_required otherwise.
+ *
+ *   POST app.php?action=join    { token }            -> { ok } | 404 invalid_link  (invitation link)
+ *   GET  app.php?action=events  -> { locations: [...], events: [...] }  (with attendee names) [access]
+ *   GET  app.php?action=my      -> { access, bookings: [...], adminExists, admin: {name, email} | null,
+ *                                    inviteLink (admins only) }
  *                                  bookings belonging to this browser, and whether an admin is logged in
- *   POST app.php?action=book    { eventId, name, email } -> { booking, editLink, mailSent }
+ *   POST app.php?action=book    { eventId, name, email } -> { booking, editLink, mailSent } [access]
  *                                 | 409 already_booked | 409 event_full | 404 unknown_event
  *   POST app.php?action=open    { token }            -> { bookingId, emailLinked } | 404 invalid_link
+ *                                                       (also gives this browser access)
  *   POST app.php?action=update  { bookingId, name }  -> { booking }
  *   POST app.php?action=cancel  { bookingId }        -> { ok }
- *   POST app.php?action=resend  { eventId, email }   -> { ok }
+ *   POST app.php?action=resend  { eventId, email }   -> { ok } [access]
  *
  * Admin:
  *   POST app.php?action=claim_admin  { name, email } -> { admin, adminLink, mailSent } | 409 admin_exists
- *                                      only works while there is no admin yet
+ *                                      only works while there is no admin yet (no invitation needed)
  *   POST app.php?action=admin_login  { token }       -> { admin } | 404 invalid_link
  *   GET  app.php?action=admin_users                  -> { users: [{ email, names, bookings }] }
  *   POST app.php?action=admin_remove { bookingId }   -> { ok }
@@ -105,6 +112,16 @@ function list_events(): array
 function public_admin(?array $admin): ?array
 {
     return $admin === null ? null : ['name' => $admin['name'], 'email' => $admin['email']];
+}
+
+/** Only browsers that opened the invitation link (or an edit/admin link) may continue. */
+function require_access(): string
+{
+    $session = vt_session(false);
+    if (!vt_has_access($session)) {
+        respond(403, ['error' => 'access_required']);
+    }
+    return $session;
 }
 
 function require_admin(): array
@@ -214,14 +231,20 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 try {
     if ($method === 'GET') {
         if ($action === 'events') {
+            require_access();
             respond(200, list_events());
         }
         if ($action === 'my') {
             $session = vt_session(false);
+            $access = vt_has_access($session);
+            $admin = vt_session_admin($session);
             respond(200, [
-                'bookings' => array_map('public_booking', vt_session_bookings($session)),
+                'access' => $access,
+                'bookings' => $access ? array_map('public_booking', vt_session_bookings($session)) : [],
                 'adminExists' => vt_admin_exists(),
-                'admin' => public_admin(vt_session_admin($session)),
+                'admin' => public_admin($admin),
+                // Only admins get the shared invitation link to pass on.
+                'inviteLink' => $admin !== null ? vt_invite_link() : null,
             ]);
         }
         if ($action === 'admin_users') {
@@ -243,7 +266,17 @@ try {
     }
 
     switch ($action) {
+        case 'join':
+            // Opening the shared invitation link gives this browser access.
+            $token = $input['token'] ?? null;
+            if (!vt_is_token_format($token) || !hash_equals(vt_invite_token(), $token)) {
+                respond(404, ['error' => 'invalid_link']);
+            }
+            vt_grant_access();
+            respond(200, ['ok' => true]);
+
         case 'book':
+            require_access();
             $eventId = is_string($input['eventId'] ?? null) ? $input['eventId'] : '';
             $name = vt_normalize_name($input['name'] ?? null);
             $email = vt_normalize_email($input['email'] ?? null);
@@ -320,7 +353,8 @@ try {
                 respond(404, ['error' => 'invalid_link']);
             }
 
-            $session = vt_session(true);
+            // Whoever has a registration's edit link was invited before.
+            $session = vt_grant_access();
             vt_insert_link('vt_session_bookings', ['session_hash' => $session, 'booking_id' => $booking['id']]);
             // The mail link proves access to the address, so all of its bookings
             // (including future ones) show up under "My events" in this browser.
@@ -562,6 +596,7 @@ try {
             respond(200, ['removedRegistrations' => $removed]);
 
         case 'resend':
+            require_access();
             $eventId = is_string($input['eventId'] ?? null) ? $input['eventId'] : '';
             $email = vt_normalize_email($input['email'] ?? null);
             if ($email === null) {

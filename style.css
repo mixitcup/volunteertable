@@ -622,3 +622,29 @@ a {
 .admin-link-box p {
   margin: 0 0 6px;
 }
+
+/* Without the invitation link only the setup card or the access notice is shown. */
+body.no-access .tabs,
+body.no-access .tab-panel {
+  display: none;
+}
+
+.access-gate {
+  max-width: 560px;
+  padding: 16px 20px;
+  border: 1px solid #E5E5E5;
+  border-radius: 6px;
+  background-color: #FAFAFA;
+}
+
+.access-gate h2 {
+  margin: 0 0 8px;
+}
+
+.access-gate p {
+  margin: 0 0 8px;
+}
+
+.access-gate[hidden] {
+  display: none;
+}

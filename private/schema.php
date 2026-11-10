@@ -88,9 +88,16 @@ function vt_schema_statements(string $driver): array
 
         // One-off flags. The unique name makes sure that e.g. only one
         // visitor can become the first admin, even with simultaneous requests.
+        // Also holds the shared invitation token ("invite_token").
         'CREATE TABLE IF NOT EXISTS vt_settings (
             name VARCHAR(64) NOT NULL PRIMARY KEY,
             value VARCHAR(255) NOT NULL
+        )' . $options,
+
+        // Browsers that may use the page: they opened the invitation link, an
+        // edit link from a registration, or an admin link.
+        'CREATE TABLE IF NOT EXISTS vt_session_access (
+            session_hash CHAR(64) NOT NULL PRIMARY KEY REFERENCES vt_sessions (id_hash)
         )' . $options,
     ];
 }
@@ -100,7 +107,7 @@ function vt_ensure_schema(PDO $db): void
     // Checks the most recently added table; all statements are "IF NOT EXISTS",
     // so databases created by an older version just get the missing tables.
     try {
-        $db->query('SELECT 1 FROM vt_settings WHERE 1 = 0');
+        $db->query('SELECT 1 FROM vt_session_access WHERE 1 = 0');
         return;
     } catch (PDOException $e) {
         // Tables missing: create them below.

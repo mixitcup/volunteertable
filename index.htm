@@ -38,6 +38,14 @@
       <div id="admin-setup-done" class="booking-confirmation" hidden></div>
     </section>
 
+    <!-- Shown to visitors who haven't opened the invitation link (the rest of the page stays hidden). -->
+    <section id="access-gate" class="access-gate" hidden>
+      <h2>Please use your invitation link</h2>
+      <p>This volunteer table is only open to invited volunteers. Please open the invitation link you received
+        from the organizers.</p>
+      <p class="hint">Already registered for an event? The link in your confirmation email works as well.</p>
+    </section>
+
     <nav class="tabs" role="tablist">
       <a href="#timetable-tab" role="tab" aria-controls="timetable-tab">Timetable</a>
       <a href="#locations-tab" role="tab" aria-controls="locations-tab">Locations</a>
@@ -1145,6 +1153,16 @@
         }
       }
 
+      function renderInviteLinkBox() {
+        var box = el('div', 'admin-link-box', el('h2', null, 'Invitation link for volunteers'));
+        box.appendChild(el('p', 'hint', 'Send this link to everyone who should be able to register. ' +
+          'Without it, the page shows nothing. Everyone gets the same link; it doesn’t give admin rights.'));
+        if (inviteLink) {
+          box.appendChild(renderLinkRow(inviteLink, 'Invitation link for volunteers'));
+        }
+        return box;
+      }
+
       function renderAdminLinkBox() {
         var link = loadAdminLink();
         var box = el('div', 'admin-link-box', el('h2', null, 'Your admin link'));
@@ -1172,6 +1190,7 @@
           adminUsers.length + (adminUsers.length === 1 ? ' person' : ' people') + ', ' +
           bookingCount + (bookingCount === 1 ? ' registration' : ' registrations')));
 
+        panel.appendChild(renderInviteLinkBox());
         panel.appendChild(renderAdminLinkBox());
 
         if (adminUsers.length === 0) {
@@ -1268,28 +1287,65 @@
         }
       }
 
+      var hasAccess = false;
+      var inviteLink = null;
+
+      // Without access only the setup card (no admin yet) or the invitation notice is shown.
+      function renderAccess() {
+        document.body.classList.toggle('no-access', !hasAccess);
+        document.getElementById('access-gate').hidden = hasAccess || !adminExists;
+      }
+
       function reload() {
-        return Promise.all([api('events'), api('my')]).then(function(results) {
-          if (!results[0].ok || !results[1].ok) {
+        return api('my').then(function(my) {
+          if (!my.ok) {
             throw new Error('Could not load timetable data');
           }
-          data = results[0].data;
-          myBookings = results[1].data.bookings;
-          adminExists = results[1].data.adminExists;
-          admin = results[1].data.admin;
-          if (admin === null) {
-            adminUsers = [];
+          hasAccess = my.data.access;
+          myBookings = my.data.bookings;
+          adminExists = my.data.adminExists;
+          admin = my.data.admin;
+          inviteLink = my.data.inviteLink;
+          if (!hasAccess) {
+            renderAccess();
+            renderAdminSetup();
             return;
           }
-          return api('admin_users').then(function(result) {
-            adminUsers = result.ok ? result.data.users : [];
+
+          return Promise.all([api('events'), admin !== null ? api('admin_users') : null]).then(function(results) {
+            if (!results[0].ok) {
+              throw new Error('Could not load timetable data');
+            }
+            data = results[0].data;
+            adminUsers = results[1] !== null && results[1].ok ? results[1].data.users : [];
+            renderAccess();
+            renderAll();
+            // If the admin tab was open but this browser is no longer admin, fall back.
+            if (admin === null && !document.getElementById('admin-tab').hidden) {
+              showTabForHash();
+            }
           });
-        }).then(function() {
-          renderAll();
-          // If the admin tab was open but this browser is no longer admin, fall back.
-          if (admin === null && !document.getElementById('admin-tab').hidden) {
-            showTabForHash();
+        });
+      }
+
+      // Opens the shared invitation link (index.htm?invite=TOKEN).
+      function openInviteLink() {
+        var params = new URLSearchParams(window.location.search);
+        var token = params.get('invite');
+        if (token === null) {
+          return Promise.resolve();
+        }
+        // Remove the token from the address bar, so it isn't shared by accident with screenshots etc.
+        params.delete('invite');
+        var query = params.toString();
+        window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+
+        return api('join', { token: token }).then(function(result) {
+          if (!result.ok) {
+            showNotice('This invitation link is not valid. Please check that you copied the whole link.', true);
           }
+        }, function() {
+          showNotice('Could not reach the server to open the invitation link. Please reload the page.', true);
         });
       }
 
@@ -1323,7 +1379,8 @@
 
       initAdminSetupForm();
 
-      openAdminLink()
+      openInviteLink()
+        .then(openAdminLink)
         .then(openBookingLink)
         .then(function(bookingId) {
           return reload().then(function() {
