@@ -91,6 +91,7 @@
     </dialog>
 
     <script src="timetablejs/plugin.js"></script>
+    <script src="xlsx.js"></script>
 
     <script>
       var DEFAULT_TAB = 'timetable-tab';
@@ -1196,6 +1197,106 @@
         return box;
       }
 
+      /* Excel export (admins) ------------------------------------------------ */
+
+      // "2026-11-09T09:30:00" (local time, as stored) -> Date.
+      function parseLocal(value) {
+        return value ? new Date(value) : null;
+      }
+
+      // The workbook's sheets, from the data the Admin tab has loaded.
+      function buildExportSheets() {
+        var eventsById = {};
+        data.events.forEach(function(event) {
+          eventsById[event.id] = event;
+        });
+        var byStart = function(a, b) { return new Date(a.start) - new Date(b.start) || a.name.localeCompare(b.name); };
+
+        var registrations = [];
+        adminUsers.forEach(function(user) {
+          user.bookings.forEach(function(booking) {
+            var event = eventsById[booking.eventId];
+            if (event) {
+              registrations.push({ event: event, booking: booking, email: user.email });
+            }
+          });
+        });
+        registrations.sort(function(a, b) {
+          return byStart(a.event, b.event) || a.booking.created - b.booking.created;
+        });
+
+        return [
+          {
+            name: 'Registrations',
+            columns: [
+              { title: 'Event', width: 28 }, { title: 'Start', width: 17 }, { title: 'End', width: 17 },
+              { title: 'Location', width: 18 }, { title: 'Name', width: 22 }, { title: 'Email', width: 30 },
+              { title: 'Registered at', width: 17 }
+            ],
+            rows: registrations.map(function(entry) {
+              return [entry.event.name, parseLocal(entry.event.start), parseLocal(entry.event.end), entry.event.location,
+                entry.booking.name, entry.email, new Date(entry.booking.created * 1000)];
+            })
+          },
+          {
+            name: 'Events',
+            columns: [
+              { title: 'Event', width: 28 }, { title: 'Start', width: 17 }, { title: 'End', width: 17 },
+              { title: 'Location', width: 18 }, { title: 'Maximum', width: 10 }, { title: 'Registered', width: 11 },
+              { title: 'Places left', width: 11 }, { title: 'Who’s coming', width: 40 },
+              { title: 'Description', width: 40 }, { title: 'Website', width: 25 }
+            ],
+            rows: data.events.slice().sort(byStart).map(function(event) {
+              return [event.name, parseLocal(event.start), parseLocal(event.end), event.location,
+                event.capacity, event.registered,
+                event.capacity === null ? null : Math.max(event.capacity - event.registered, 0),
+                event.attendees.join(', '), event.info, event.url];
+            })
+          },
+          {
+            name: 'People',
+            columns: [
+              { title: 'Name', width: 22 }, { title: 'Email', width: 30 }, { title: 'Registrations', width: 13 },
+              { title: 'Events', width: 60 }
+            ],
+            rows: adminUsers.map(function(user) {
+              var events = user.bookings
+                .map(function(booking) { return eventsById[booking.eventId]; })
+                .filter(Boolean)
+                .sort(byStart);
+              return [user.names.join(' / '), user.email, user.bookings.length,
+                events.map(function(event) { return event.name; }).join(', ')];
+            })
+          },
+          {
+            name: 'Locations',
+            columns: [
+              { title: 'Location', width: 22 }, { title: 'Events', width: 9 }, { title: 'Link', width: 30 },
+              { title: 'Information', width: 50 }
+            ],
+            rows: data.locations.map(function(location) {
+              var count = data.events.filter(function(event) { return event.locationId === location.id; }).length;
+              return [location.name, count, location.url, location.info];
+            })
+          }
+        ];
+      }
+
+      function downloadExcel() {
+        var bytes = Xlsx.build(buildExportSheets());
+        var now = new Date();
+        var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+        // File name from the page title, e.g. "Mix-It-Cup-2026_2026-11-10.xlsx".
+        var base = (page.title || 'VolunteerTable').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '') || 'VolunteerTable';
+        var link = el('a');
+        link.href = URL.createObjectURL(new Blob([bytes], { type: Xlsx.MIME_TYPE }));
+        link.download = base + '_' + now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + '.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(function() { URL.revokeObjectURL(link.href); }, 10000);
+      }
+
       function renderAdminPanel(locationInfoIds) {
         document.getElementById('admin-tab-link').hidden = admin === null;
         var panel = document.querySelector('.admin-panel');
@@ -1208,6 +1309,9 @@
         panel.appendChild(el('p', 'hint', 'Logged in as admin: ' + admin.name + ' (' + admin.email + ') · ' +
           adminUsers.length + (adminUsers.length === 1 ? ' person' : ' people') + ', ' +
           bookingCount + (bookingCount === 1 ? ' registration' : ' registrations')));
+
+        panel.appendChild(el('p', null, button('Download as Excel', 'button', downloadExcel),
+          el('span', 'hint', ' All registrations, events, people and locations in one .xlsx file.')));
 
         panel.appendChild(renderInviteLinkBox());
         panel.appendChild(renderAdminLinkBox());
