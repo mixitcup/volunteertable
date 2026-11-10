@@ -1,0 +1,27 @@
+<?php
+// Deutsche Texte für E-Mails (German). Same keys as en.php; missing texts fall back to English.
+return [
+    'locale' => [
+        'days' => ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+        'months' => ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sept.', 'Okt.', 'Nov.', 'Dez.'],
+        'date' => '{day}, {d}. {month} {year}',
+    ],
+
+    'booking.subject' => 'Deine Anmeldung: {event}',
+    'booking.hello' => 'Hallo {name},',
+    'booking.intro.self' => 'du bist angemeldet für:',
+    'booking.intro.someone_else' => 'jemand hat dich angemeldet für:',
+    'booking.intro.admin' => 'das Orga-Team hat dich angemeldet für:',
+    'booking.responsible' => 'Verantwortlich: {names}',
+    'booking.notIntended' => 'Falls du damit nicht gerechnet hast oder nicht kannst, kannst du mit dem Link unten absagen.',
+    'booking.linkIntro' => 'Um deine Anmeldung zu ändern oder abzusagen, öffne diesen Link:',
+    'booking.linkInfo' => "Wenn du den Link öffnest, siehst du in diesem Browser unter „Meine Schichten“\n"
+        . "auch alle anderen Anmeldungen mit dieser E-Mail-Adresse.\n"
+        . 'Wer diesen Link hat, kann deine Anmeldung ändern, also gib ihn bitte nicht weiter.',
+
+    'admin.subject' => 'Dein Admin-Link für die Helfer*innen-Tabelle',
+    'admin.hello' => 'Hallo {name},',
+    'admin.intro' => "du bist jetzt Admin der Helfer*innen-Tabelle. Um dich als Admin anzumelden,\n"
+        . 'auch auf einem anderen Gerät oder in einem anderen Browser, öffne diesen Link:',
+    'admin.keepSafe' => 'Wer diesen Link hat, kann alle Anmeldungen verwalten, also bewahre ihn bitte gut auf.',
+];

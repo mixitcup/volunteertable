@@ -37,6 +37,27 @@ Timetable.NARROW_SCREEN = '(max-width: 600px)';
 // How often the current-time line and past/current markers are refreshed.
 Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 
+// Texts shown by the timetable, in English. A page can translate them by
+// setting Timetable.translate = function(key, params) { … } (see i18n.js).
+Timetable.texts = {
+	'timetable.showInfoFor': 'Show info for {location}',
+	'timetable.mapDirections': 'Map & directions',
+	'timetable.registeredTitle': '{name} ({count} registered)',
+	'timetable.minimumReached': ' – minimum of {min} reached',
+	'timetable.minimumNeeded': ' – at least {min} needed',
+	'timetable.registeredCount': '({count} registered)'
+};
+Timetable.translate = null;
+
+Timetable.text = function(key, params) {
+	if (typeof Timetable.translate === 'function') {
+		return Timetable.translate(key, params);
+	}
+	return (Timetable.texts[key] || key).replace(/\{(\w+)\}/g, function(match, name) {
+		return params && Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match;
+	});
+};
+
 (function() {
 	function isValidHourRange(start, end) {
 		return isValidHour(start) && isValidHour(end);
@@ -361,7 +382,8 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 					if (event.options !== undefined && isValidRegistration(event.options.registered, event.options.capacity)) {
 						var countNode = itemNode.appendChild(document.createElement('span'));
 						countNode.className = 'location-event-registration';
-						countNode.textContent = ' (' + event.options.registered + '/' + event.options.capacity + ' registered)';
+						countNode.textContent = ' ' + Timetable.text('timetable.registeredCount',
+							{ count: event.options.registered + '/' + event.options.capacity });
 					}
 				});
 			}
@@ -376,7 +398,7 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				var rowLinkNode = node.appendChild(document.createElement('a'));
 				rowLinkNode.className = 'location-info-link';
 				rowLinkNode.href = '#' + getLocationInfoId(location);
-				rowLinkNode.title = 'Show info for ' + location;
+				rowLinkNode.title = Timetable.text('timetable.showInfoFor', { location: location });
 				appendRowHeading(rowLinkNode, location);
 				var chevronNode = rowLinkNode.appendChild(document.createElement('span'));
 				chevronNode.className = 'location-info-chevron';
@@ -420,7 +442,7 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 						var locationLinkNode = infoNode.appendChild(document.createElement('p'));
 						var locationAnchorNode = locationLinkNode.appendChild(document.createElement('a'));
 						locationAnchorNode.className = 'external-link';
-						locationAnchorNode.textContent = 'Map & directions';
+						locationAnchorNode.textContent = Timetable.text('timetable.mapDirections');
 						locationAnchorNode.href = links.url;
 					}
 					if (links.info !== undefined) {
@@ -576,8 +598,8 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				if (hasOptions && hasMinimum(event)) {
 					var reached = (event.options.registered || 0) >= event.options.minimum;
 					eventNode.className += reached ? ' is-minimum-reached' : ' is-below-minimum';
-					eventNode.title += reached ? ' – minimum of ' + event.options.minimum + ' reached' :
-						' – at least ' + event.options.minimum + ' needed';
+					eventNode.title += Timetable.text(reached ? 'timetable.minimumReached' : 'timetable.minimumNeeded',
+						{ min: event.options.minimum });
 				}
 				if (hasCapacity || (hasOptions && hasMinimum(event) && typeof event.options.registered === 'number')) {
 					appendRegistrationCount(event, eventNode, smallNode);
@@ -614,7 +636,7 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				if (registered >= capacity) {
 					eventNode.className += ' is-full';
 				}
-				eventNode.title = event.name + ' (' + countText + ' registered)';
+				eventNode.title = Timetable.text('timetable.registeredTitle', { name: event.name, count: countText });
 
 				var barNode = eventNode.appendChild(document.createElement('span'));
 				barNode.className = 'registration-bar';

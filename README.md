@@ -34,6 +34,15 @@ php -S localhost:8000 -t public
 
 Then open http://localhost:8000/index.htm. The first visitor becomes admin and gets the invitation link for volunteers on the Admin tab.
 
+## Translations
+
+The page is available in English and German; visitors get their browser's language and can switch in the top-right corner. Texts are referred to by key and kept in one file per language:
+
+- `public/lang/en.js`, `public/lang/de.js`: the page.
+- `private/lang/en.php`, `private/lang/de.php`: the emails.
+
+To change a text, edit it in the file of that language. To add a language, copy the English files (e.g. to `public/lang/fr.js` and `private/lang/fr.php`), translate the texts, and load the new page file in `public/index.htm` after `lang/de.js`. Missing texts fall back to English.
+
 ## Thanks
 
 This tool is initially based on https://github.com/Grible/timetable.js and extended using GitHub Copilot and Claude Code.

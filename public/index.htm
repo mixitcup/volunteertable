@@ -11,6 +11,14 @@
   </head>
   <body>
 
+    <!-- Language switch, top-right corner. Options are filled in by the script. -->
+    <div class="language-switch">
+      <label>
+        <span class="visually-hidden" data-i18n="language.label">Language</span>
+        <select id="language-select"></select>
+      </label>
+    </div>
+
     <!-- Title and intro come from the server (editable by the admin); hidden until loaded to avoid flicker. -->
     <div class="hero-unit" id="hero" hidden>
       <h1 id="page-title"></h1>
@@ -22,19 +30,19 @@
     <!-- Shown to the first visitor, as long as nobody manages the page yet. -->
     <section id="admin-setup" class="admin-setup" hidden>
       <form id="admin-setup-form" class="booking-form" novalidate>
-        <h2>Welcome! You’re the first one here.</h2>
-        <p>Nobody manages this volunteer table yet. Enter your name and email address to become its admin:
+        <h2 data-i18n="setup.title">Welcome! You’re the first one here.</h2>
+        <p data-i18n="setup.intro">Nobody manages this volunteer table yet. Enter your name and email address to become its admin:
           you’ll be able to see everyone who registered and remove people from events.</p>
         <label>
-          Name
+          <span data-i18n="common.name">Name</span>
           <input name="name" type="text" required maxlength="80" autocomplete="name">
         </label>
         <label>
-          Email address (we send your admin link here)
+          <span data-i18n="setup.email">Email address (we send your admin link here)</span>
           <input name="email" type="email" required maxlength="254" autocomplete="email">
         </label>
         <div class="form-buttons">
-          <button type="submit" class="button">Become admin</button>
+          <button type="submit" class="button" data-i18n="setup.submit">Become admin</button>
         </div>
         <div class="form-message is-error" role="alert" hidden></div>
       </form>
@@ -43,29 +51,29 @@
 
     <!-- Shown to visitors who haven't opened the invitation link (the rest of the page stays hidden). -->
     <section id="access-gate" class="access-gate" hidden>
-      <h2>Please use your invitation link</h2>
-      <p>This volunteer table is only open to invited volunteers. Please open the invitation link you received
+      <h2 data-i18n="gate.title">Please use your invitation link</h2>
+      <p data-i18n="gate.text">This volunteer table is only open to invited volunteers. Please open the invitation link you received
         from the organizers.</p>
-      <p class="hint">Already registered for an event? The link in your confirmation email works as well.</p>
+      <p class="hint" data-i18n="gate.hint">Already registered for an event? The link in your confirmation email works as well.</p>
     </section>
 
     <nav class="tabs" role="tablist">
-      <a href="#timetable-tab" role="tab" aria-controls="timetable-tab">Timetable</a>
-      <a href="#locations-tab" role="tab" aria-controls="locations-tab">Locations</a>
-      <a href="#events-tab" role="tab" aria-controls="events-tab">Events</a>
-      <a href="#my-events-tab" role="tab" aria-controls="my-events-tab">My events<span class="tab-count" id="my-events-count" hidden></span></a>
-      <a href="#admin-tab" role="tab" aria-controls="admin-tab" id="admin-tab-link" hidden>Admin</a>
+      <a href="#timetable-tab" role="tab" aria-controls="timetable-tab" data-i18n="tabs.timetable">Timetable</a>
+      <a href="#locations-tab" role="tab" aria-controls="locations-tab" data-i18n="tabs.locations">Locations</a>
+      <a href="#events-tab" role="tab" aria-controls="events-tab" data-i18n="tabs.events">Events</a>
+      <a href="#my-events-tab" role="tab" aria-controls="my-events-tab"><span data-i18n="tabs.myEvents">My events</span><span class="tab-count" id="my-events-count" hidden></span></a>
+      <a href="#admin-tab" role="tab" aria-controls="admin-tab" id="admin-tab-link" hidden data-i18n="tabs.admin">Admin</a>
     </nav>
 
     <section id="timetable-tab" class="tab-panel" role="tabpanel">
       <div class="timetable"></div>
       <!-- Explains why events look different. -->
-      <ul class="timetable-legend" aria-label="What the colours mean">
-        <li><span class="legend-swatch is-open"></span>Help needed</li>
-        <li><span class="legend-swatch is-minimum-reached"></span>Minimum reached, places left</li>
-        <li><span class="legend-swatch is-full"></span>Full</li>
-        <li><span class="legend-swatch is-mine"></span>You’re registered</li>
-        <li><span class="legend-swatch is-past"></span>Over</li>
+      <ul class="timetable-legend" aria-label="What the colours mean" data-i18n-aria-label="legend.label">
+        <li><span class="legend-swatch is-open"></span><span data-i18n="legend.helpNeeded">Help needed</span></li>
+        <li><span class="legend-swatch is-minimum-reached"></span><span data-i18n="legend.minimumReached">Minimum reached, places left</span></li>
+        <li><span class="legend-swatch is-full"></span><span data-i18n="legend.full">Full</span></li>
+        <li><span class="legend-swatch is-mine"></span><span data-i18n="legend.mine">You’re registered</span></li>
+        <li><span class="legend-swatch is-past"></span><span data-i18n="legend.over">Over</span></li>
       </ul>
     </section>
 
@@ -94,16 +102,26 @@
         <div class="editor-fields"></div>
         <div class="form-message is-error" role="alert" hidden></div>
         <div class="form-buttons">
-          <button type="submit" class="button" value="save">Save</button>
-          <button type="button" class="button button-secondary js-editor-cancel">Cancel</button>
+          <button type="submit" class="button" value="save" data-i18n="common.save">Save</button>
+          <button type="button" class="button button-secondary js-editor-cancel" data-i18n="common.cancel">Cancel</button>
         </div>
       </form>
     </dialog>
 
+    <!-- Translations: the module, then one file per language (see i18n.js). -->
+    <script src="i18n.js"></script>
+    <script src="lang/en.js"></script>
+    <script src="lang/de.js"></script>
     <script src="timetablejs/plugin.js"></script>
     <script src="xlsx.js"></script>
 
     <script>
+      // Texts by key, in the chosen language (see i18n.js and lang/*.js).
+      var t = I18n.t;
+      var tn = I18n.tn;
+      // The timetable's own texts (e.g. "Map & directions") come from the same files.
+      Timetable.translate = I18n.t;
+
       var DEFAULT_TAB = 'timetable-tab';
       var CONTACT_STORAGE_KEY = 'volunteertable-contact';
 
@@ -230,15 +248,13 @@
       function loadError(result, action) {
         var detail;
         if (!result.json) {
-          detail = 'the server did not answer with data (HTTP ' + result.status + '). ' +
-            'Check that PHP runs for api/app.php and look at the web server’s error log.';
+          detail = t('load.notJson', { status: result.status });
         } else if (result.data.error === 'server_error') {
-          detail = 'the server had an internal error. Details are in the PHP error log (lines starting with ' +
-            '“[volunteertable]”), or run “php private/check.php” on the server.';
+          detail = t('load.serverError');
         } else {
-          detail = 'HTTP ' + result.status + (result.data.error ? ', ' + result.data.error : '') + '.';
+          detail = t('load.otherError', { status: result.status, error: result.data.error ? ', ' + result.data.error : '' });
         }
-        return new Error('Could not load the timetable data (' + action + '): ' + detail);
+        return new Error(t('load.error', { action: action, detail: detail }));
       }
 
       function showNotice(text, isError) {
@@ -251,12 +267,12 @@
       function formatTimeRange(start, end) {
         var dateFormat = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
         var timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
-        var text = start.toLocaleDateString('en-GB', dateFormat) + ', ' +
-          start.toLocaleTimeString('en-GB', timeFormat) + ' – ';
+        var text = start.toLocaleDateString(I18n.locale(), dateFormat) + ', ' +
+          start.toLocaleTimeString(I18n.locale(), timeFormat) + ' – ';
         if (start.toDateString() !== end.toDateString()) {
-          text += end.toLocaleDateString('en-GB', dateFormat) + ', ';
+          text += end.toLocaleDateString(I18n.locale(), dateFormat) + ', ';
         }
-        return text + end.toLocaleTimeString('en-GB', timeFormat);
+        return text + end.toLocaleTimeString(I18n.locale(), timeFormat);
       }
 
       function getEventInfoId(event) {
@@ -320,6 +336,7 @@
       function renderTimetable() {
         var timetable = new Timetable();
         timetable.setScope(0, 0);
+        timetable.setLocale(I18n.locale());
         timetable.setLocationInfoContainer('.location-info');
         timetable.addLocations(data.locations.map(function(location) {
           return location.name;
@@ -358,7 +375,7 @@
         }
 
         if (document.querySelector('.location-info article') === null) {
-          document.querySelector('.location-info').textContent = 'No location information available.';
+          document.querySelector('.location-info').textContent = t('locations.none');
         }
       }
 
@@ -400,7 +417,7 @@
         var past = sorted.filter(isPast);
 
         if (upcoming.length === 0) {
-          list.appendChild(el('p', 'empty-state', past.length > 0 ? 'All events are over.' : 'There are no events yet.'));
+          list.appendChild(el('p', 'empty-state', past.length > 0 ? t('events.allOver') : t('events.none')));
         }
         upcoming.forEach(function(event) {
           list.appendChild(renderEventCard(event, locationInfoIds));
@@ -408,7 +425,7 @@
 
         if (past.length > 0) {
           var details = list.appendChild(el('details', 'past-events',
-            el('summary', null, 'Past events (' + past.length + ')')));
+            el('summary', null, t('events.past', { n: past.length }))));
           details.open = pastEventsOpen;
           details.addEventListener('toggle', function() {
             pastEventsOpen = details.open;
@@ -443,9 +460,8 @@
         }
         var missing = event.minimum - event.registered;
         return missing > 0 ?
-          el('span', 'minimum-hint is-missing', missing + (missing === 1 ? ' more person' : ' more people') +
-            ' needed (minimum ' + event.minimum + ')') :
-          el('span', 'minimum-hint is-reached', 'minimum of ' + event.minimum + ' reached ✓');
+          el('span', 'minimum-hint is-missing', tn(missing, 'events.missing', { min: event.minimum })) :
+          el('span', 'minimum-hint is-reached', t('events.minimumReached', { min: event.minimum }));
       }
 
       function renderEventCard(event, locationInfoIds) {
@@ -456,7 +472,7 @@
 
         var heading = article.appendChild(el('h2', null, event.name));
         if (admin !== null) {
-          heading.appendChild(button('Edit', 'button button-secondary admin-edit-button', function() {
+          heading.appendChild(button(t('common.edit'), 'button button-secondary admin-edit-button', function() {
             openEventEditor(event);
           }));
         }
@@ -466,17 +482,18 @@
 
         if (event.responsible) {
           article.appendChild(el('p', 'event-responsible',
-            el('span', 'event-responsible-label', 'Responsible: '), event.responsible));
+            el('span', 'event-responsible-label', t('events.responsible') + ' '), event.responsible));
         }
 
         var registration = article.appendChild(el('p', 'event-registration'));
         if (event.capacity !== null) {
           var full = event.registered >= event.capacity;
           registration.appendChild(capacityMeter(event));
-          registration.appendChild(document.createTextNode(event.registered + ' of ' + event.capacity + ' registered' +
-            (full ? ' (full)' : ', ' + (event.capacity - event.registered) + ' places left')));
+          registration.appendChild(document.createTextNode(full ?
+            t('events.registeredFull', { registered: event.registered, max: event.capacity }) :
+            tn(event.capacity - event.registered, 'events.registeredPlacesLeft', { registered: event.registered, max: event.capacity })));
         } else {
-          registration.textContent = event.registered + ' registered';
+          registration.textContent = t('events.registered', { n: event.registered });
         }
         var hint = minimumHint(event);
         if (hint !== null) {
@@ -485,7 +502,7 @@
         }
 
         if (event.attendees.length > 0 || admin !== null) {
-          var attendees = article.appendChild(el('ul', 'event-attendees', el('li', 'attendees-label', 'Who’s coming:')));
+          var attendees = article.appendChild(el('ul', 'event-attendees', el('li', 'attendees-label', t('events.whoIsComing'))));
           if (admin !== null) {
             // Admins see who is behind each name, can remove people and add people.
             getAdminBookings(event.id).forEach(function(booking) {
@@ -494,9 +511,9 @@
                   removeBooking(booking, event);
                 })));
               chip.title = booking.email;
-              chip.lastChild.setAttribute('aria-label', 'Remove ' + booking.name + ' from this event');
+              chip.lastChild.setAttribute('aria-label', t('events.removePerson', { name: booking.name }));
             });
-            attendees.appendChild(el('li', 'add-person-item', button('+ Add person', 'add-person-button', function() {
+            attendees.appendChild(el('li', 'add-person-item', button(t('events.addPerson'), 'add-person-button', function() {
               openAddPersonDialog(event);
             })));
           } else {
@@ -510,7 +527,7 @@
           article.appendChild(el('p', null, event.info));
         }
         if (event.url) {
-          var urlLink = el('a', 'external-link', 'Event website');
+          var urlLink = el('a', 'external-link', t('events.website'));
           urlLink.href = event.url;
           article.appendChild(el('p', null, urlLink));
         }
@@ -525,10 +542,10 @@
         var confirmation = confirmations[event.id];
 
         if (myBooking !== null) {
-          var editLink = el('a', null, 'Change or cancel');
+          var editLink = el('a', null, t('events.changeOrCancel'));
           editLink.href = '#my-booking-' + myBooking.id;
           actions.appendChild(el('p', null,
-            el('span', 'registered-badge', '✓ You’re registered as ' + myBooking.name), ' ', editLink));
+            el('span', 'registered-badge', t('events.youAreRegistered', { name: myBooking.name })), ' ', editLink));
           if (confirmation) {
             actions.appendChild(renderConfirmation(confirmation));
           }
@@ -546,7 +563,7 @@
           if (openFormEventId === event.id && !full) {
             actions.appendChild(renderBookingForm(event, false));
           } else {
-            var addButton = button(full ? 'Full' : '+ Add me', 'button add-me-button', function() {
+            var addButton = button(full ? t('events.full') : t('events.addMe'), 'button add-me-button', function() {
               openFormEventId = event.id;
               openOtherFormEventId = null;
               renderAll();
@@ -562,7 +579,7 @@
           if (openOtherFormEventId === event.id) {
             actions.appendChild(renderBookingForm(event, true));
           } else {
-            buttons.appendChild(button('+ Add someone else', 'button button-secondary add-other-button', function() {
+            buttons.appendChild(button(t('events.addSomeoneElse'), 'button button-secondary add-other-button', function() {
               openOtherFormEventId = event.id;
               openFormEventId = null;
               renderAll();
@@ -606,22 +623,21 @@
         emailInput.autocomplete = forSomeoneElse ? 'off' : 'email';
         emailInput.value = contact.email;
 
-        var submit = el('button', 'button', forSomeoneElse ? 'Register them' : 'Register');
+        var submit = el('button', 'button', forSomeoneElse ? t('form.registerThem') : t('form.register'));
         submit.type = 'submit';
         var message = el('div', 'form-message is-error');
         message.setAttribute('role', 'alert');
         message.hidden = true;
 
         if (forSomeoneElse) {
-          form.appendChild(el('p', 'form-intro', 'Register a friend or colleague for this event.'));
-          form.appendChild(el('label', null, 'Their name (shown to others)', nameInput));
-          form.appendChild(el('label', null,
-            'Their email address (not shown; we send them a confirmation with a link to change or cancel)', emailInput));
+          form.appendChild(el('p', 'form-intro', t('form.otherIntro')));
+          form.appendChild(el('label', null, t('form.otherName'), nameInput));
+          form.appendChild(el('label', null, t('form.otherEmail'), emailInput));
         } else {
-          form.appendChild(el('label', null, 'Name (shown to others)', nameInput));
-          form.appendChild(el('label', null, 'Email address (not shown; we send your edit link here)', emailInput));
+          form.appendChild(el('label', null, t('form.name'), nameInput));
+          form.appendChild(el('label', null, t('form.email'), emailInput));
         }
-        form.appendChild(el('div', 'form-buttons', submit, button('Cancel', 'button button-secondary', function() {
+        form.appendChild(el('div', 'form-buttons', submit, button(t('common.cancel'), 'button button-secondary', function() {
           openFormEventId = null;
           openOtherFormEventId = null;
           renderAll();
@@ -641,23 +657,22 @@
           var name = nameInput.value.trim();
           var email = emailInput.value.trim();
           if (name === '') {
-            showMessage([forSomeoneElse ? 'Please enter their name.' : 'Please enter your name.']);
+            showMessage([forSomeoneElse ? t('form.enterTheirName') : t('form.enterYourName')]);
             return;
           }
           if (email === '' || !emailInput.checkValidity()) {
-            showMessage(['Please enter a valid email address.']);
+            showMessage([t('form.invalidEmail')]);
             return;
           }
 
           submit.disabled = true;
-          api('book', { eventId: event.id, name: name, email: email, forSomeoneElse: forSomeoneElse })
+          api('book', { eventId: event.id, name: name, email: email, forSomeoneElse: forSomeoneElse, lang: I18n.language() })
             .then(function(result) {
               submit.disabled = false;
               if (result.ok && forSomeoneElse) {
                 openOtherFormEventId = null;
-                showNotice(name + ' has been registered for “' + event.name + '”' + (result.data.mailSent ?
-                  '. We sent them a confirmation email with a link to change or cancel.' :
-                  ', but the confirmation email could not be sent.'), !result.data.mailSent);
+                showNotice(t(result.data.mailSent ? 'form.registeredOther' : 'form.registeredOtherMailFailed',
+                  { name: name, event: event.name }), !result.data.mailSent);
                 return reload();
               }
               if (result.ok) {
@@ -672,22 +687,22 @@
               }
               var error = result.data.error;
               if (error === 'already_booked' && forSomeoneElse) {
-                showMessage(['This email address is already registered for this event.']);
+                showMessage([t('form.alreadyRegistered')]);
               } else if (error === 'already_booked') {
-                showMessage(['This email address is already registered for this event. ', renderResendButton(event, email, showMessage)]);
+                showMessage([t('form.alreadyRegistered') + ' ', renderResendButton(event, email, showMessage)]);
               } else if (error === 'event_full') {
-                showMessage(['Sorry, this event has just filled up.']);
+                showMessage([t('form.justFilledUp')]);
                 return reload();
               } else if (error === 'invalid_name') {
-                showMessage(['Please enter a name of at most 80 characters.']);
+                showMessage([t('form.nameTooLong')]);
               } else if (error === 'invalid_email') {
-                showMessage(['Please enter a valid email address.']);
+                showMessage([t('form.invalidEmail')]);
               } else {
-                showMessage(['Registration failed. Please try again later.']);
+                showMessage([t('form.failed')]);
               }
             }, function() {
               submit.disabled = false;
-              showMessage(['Could not reach the server. Please try again.']);
+              showMessage([t('common.unreachable')]);
             });
         });
 
@@ -695,19 +710,18 @@
       }
 
       function renderResendButton(event, email, showMessage) {
-        var resend = button('Send me the edit link again', 'link-button', function() {
+        var resend = button(t('form.resend'), 'link-button', function() {
           resend.disabled = true;
-          api('resend', { eventId: event.id, email: email }).then(function(result) {
+          api('resend', { eventId: event.id, email: email, lang: I18n.language() }).then(function(result) {
             if (result.ok) {
-              showMessage(['If ' + email + ' is registered for this event, we’ve sent a new edit link there. ' +
-                'Please also check your spam folder.']);
+              showMessage([t('form.resent', { email: email })]);
             } else {
               resend.disabled = false;
-              showMessage(['The link could not be sent. Please try again later.']);
+              showMessage([t('form.resendFailed')]);
             }
           }, function() {
             resend.disabled = false;
-            showMessage(['Could not reach the server. Please try again.']);
+            showMessage([t('common.unreachable')]);
           });
         });
         return resend;
@@ -717,27 +731,26 @@
         var input = el('input');
         input.readOnly = true;
         input.value = confirmation.editLink;
-        input.setAttribute('aria-label', 'Your edit link');
+        input.setAttribute('aria-label', t('confirmation.linkLabel'));
 
-        var copy = button('Copy', 'button button-secondary', function() {
+        var copy = button(t('common.copy'), 'button button-secondary', function() {
           input.select();
           var copied = navigator.clipboard ?
             navigator.clipboard.writeText(input.value) :
             Promise.reject(new Error('Clipboard not available'));
           copied.then(function() {
-            copy.textContent = 'Copied';
+            copy.textContent = t('common.copied');
           }, function() {
-            copy.textContent = 'Press Ctrl+C';
+            copy.textContent = t('common.pressCtrlC');
           });
         });
 
         return el('div', 'booking-confirmation',
-          el('p', null, el('strong', null, 'Thanks for registering!'),
-            ' With this link you can change or cancel your registration later, also on another device:'),
+          el('p', null, el('strong', null, t('confirmation.thanks')), ' ' + t('confirmation.text')),
           el('div', 'edit-link-row', input, copy),
           el('p', 'hint', confirmation.mailSent ?
-            'We also sent the link to ' + confirmation.email + '.' :
-            'We could not send this link by email, so please save it now.'));
+            t('confirmation.mailSent', { email: confirmation.email }) :
+            t('confirmation.mailFailed')));
       }
 
       /* ------------------------------------------------------------------
@@ -758,10 +771,8 @@
           .sort(function(a, b) { return new Date(a.event.start) - new Date(b.event.start); });
 
         if (entries.length === 0) {
-          list.appendChild(el('p', null, 'You haven’t registered for any events in this browser yet.'));
-          list.appendChild(el('p', 'hint',
-            'Registered somewhere else? Open the link from your confirmation email: all your registrations ' +
-            'made with that email address will then show up here.'));
+          list.appendChild(el('p', null, t('myEvents.none')));
+          list.appendChild(el('p', 'hint', t('myEvents.hint')));
           return;
         }
 
@@ -783,7 +794,7 @@
           if (editingBookingId === booking.id) {
             article.appendChild(renderNameForm(booking));
           } else {
-            article.appendChild(el('p', null, 'Registered as ', el('strong', null, booking.name), ' (' + booking.email + ')'));
+            article.appendChild(el('p', null, t('myEvents.registeredAs') + ' ', el('strong', null, booking.name), ' (' + booking.email + ')'));
           }
 
           var confirmation = confirmations[event.id];
@@ -793,25 +804,25 @@
 
           if (editingBookingId !== booking.id) {
             article.appendChild(el('div', 'my-event-actions',
-              button('Change name', 'link-button', function() {
+              button(t('myEvents.changeName'), 'link-button', function() {
                 editingBookingId = booking.id;
                 renderAll();
                 document.querySelector('#my-booking-' + booking.id + ' input').focus();
               }),
-              button('Cancel registration', 'link-button', function() {
-                if (!window.confirm('Cancel your registration for “' + event.name + '”?')) {
+              button(t('myEvents.cancel'), 'link-button', function() {
+                if (!window.confirm(t('myEvents.cancelConfirm', { event: event.name }))) {
                   return;
                 }
                 api('cancel', { bookingId: booking.id }).then(function(result) {
                   if (!result.ok) {
-                    showNotice('The registration could not be cancelled. Please try again.', true);
+                    showNotice(t('myEvents.cancelFailed'), true);
                     return;
                   }
                   delete confirmations[event.id];
-                  showNotice('Your registration for “' + event.name + '” has been cancelled.', false);
+                  showNotice(t('myEvents.cancelled', { event: event.name }), false);
                   return reload();
                 }, function() {
-                  showNotice('Could not reach the server. Please try again.', true);
+                  showNotice(t('common.unreachable'), true);
                 });
               })));
           }
@@ -825,13 +836,13 @@
         input.required = true;
         input.maxLength = 80;
         input.value = booking.name;
-        var save = el('button', 'button', 'Save');
+        var save = el('button', 'button', t('common.save'));
         save.type = 'submit';
 
         var form = el('form', 'inline-name-form',
-          el('label', null, 'Name', input),
+          el('label', null, t('common.name'), input),
           save,
-          button('Cancel', 'button button-secondary', function() {
+          button(t('common.cancel'), 'button button-secondary', function() {
             editingBookingId = null;
             renderAll();
           }));
@@ -846,16 +857,14 @@
           api('update', { bookingId: booking.id, name: input.value.trim() }).then(function(result) {
             save.disabled = false;
             if (!result.ok) {
-              showNotice(result.data.error === 'invalid_name' ?
-                'Please enter a name of at most 80 characters.' :
-                'The name could not be changed. Please try again.', true);
+              showNotice(result.data.error === 'invalid_name' ? t('form.nameTooLong') : t('myEvents.nameFailed'), true);
               return;
             }
             editingBookingId = null;
             return reload();
           }, function() {
             save.disabled = false;
-            showNotice('Could not reach the server. Please try again.', true);
+            showNotice(t('common.unreachable'), true);
           });
         });
         return form;
@@ -879,65 +888,47 @@
       }
 
       function removeBooking(booking, event) {
-        if (!window.confirm('Remove ' + booking.name + ' (' + booking.email + ') from “' + event.name + '”?')) {
+        if (!window.confirm(t('admin.removeConfirm', { name: booking.name, email: booking.email, event: event.name }))) {
           return;
         }
         api('admin_remove', { bookingId: booking.id }).then(function(result) {
           if (!result.ok) {
-            showNotice(result.status === 403 ?
-              'You are no longer logged in as admin in this browser.' :
-              'The registration could not be removed. Please try again.', true);
+            showNotice(result.status === 403 ? t('common.notAdminAnymore') : t('admin.removeFailed'), true);
             return reload();
           }
-          showNotice(booking.name + ' has been removed from “' + event.name + '”.', false);
+          showNotice(t('admin.removed', { name: booking.name, event: event.name }), false);
           return reload();
         }, function() {
-          showNotice('Could not reach the server. Please try again.', true);
+          showNotice(t('common.unreachable'), true);
         });
       }
 
       function removeUser(user) {
         var count = user.bookings.length;
         var name = user.names.join(' / ');
-        if (!window.confirm('Remove ' + name + ' (' + user.email + ') entirely?\n\n' +
-            'This deletes all ' + count + (count === 1 ? ' registration' : ' registrations') +
-            ' made with this email address. It cannot be undone.')) {
+        if (!window.confirm(tn(count, 'admin.removeUserConfirm', { name: name, email: user.email }))) {
           return;
         }
         api('admin_remove_user', { email: user.email }).then(function(result) {
           if (!result.ok) {
-            showNotice(result.status === 403 ?
-              'You are no longer logged in as admin in this browser.' :
-              'This person could not be removed. Please try again.', true);
+            showNotice(result.status === 403 ? t('common.notAdminAnymore') : t('admin.removeUserFailed'), true);
             return reload();
           }
-          showNotice(name + ' has been removed, with ' + result.data.removed +
-            (result.data.removed === 1 ? ' registration.' : ' registrations.'), false);
+          showNotice(tn(result.data.removed, 'admin.userRemoved', { name: name }), false);
           return reload();
         }, function() {
-          showNotice('Could not reach the server. Please try again.', true);
+          showNotice(t('common.unreachable'), true);
         });
       }
 
       /* Editing locations and events --------------------------------------- */
 
-      var FIELD_ERRORS = {
-        invalid_name: 'Please enter a name of at most 80 characters.',
-        name_taken: 'There already is a location with this name.',
-        invalid_text: 'This text is too long.',
-        invalid_url: 'Please enter a web address starting with https:// (or leave it empty).',
-        invalid_datetime: 'Please enter a valid date and time.',
-        end_before_start: 'The end must be after the start.',
-        invalid_capacity: 'Please enter a whole number of at least 1, or leave it empty for no limit.',
-        invalid_title: 'Please enter a title of at most 120 characters, on one line.',
-        invalid_minimum: 'Please enter a whole number of at least 1, or leave it empty for no minimum.',
-        minimum_above_capacity: 'The minimum can’t be higher than the maximum number of people.',
-        unknown_location: 'Please choose a location.',
-        invalid_email: 'Please enter a valid email address.',
-        already_booked: 'This email address is already registered for this event.',
-        event_full: 'This event is full.',
-        unknown_event: 'This event no longer exists.'
-      };
+      // Messages for errors the server reports by code (keys "error.<code>" in lang/*.js).
+      function fieldError(code) {
+        var key = 'error.' + code;
+        var text = t(key);
+        return text === key ? null : text;
+      }
 
       /*
        * Admins add someone to an event: either a person who registered before
@@ -954,31 +945,30 @@
           .map(function(user) { return { email: user.email, name: user.names[0] }; })
           .sort(function(a, b) { return a.name.localeCompare(b.name) || a.email.localeCompare(b.email); });
 
-        var editor = openEditor('Add a person to “' + event.name + '”', [
+        var editor = openEditor(t('admin.addPersonTitle', { event: event.name }), [
           {
-            key: 'person', label: 'Person', type: 'select', required: true, value: '',
-            options: [{ value: '', label: 'New person…' }].concat(people.map(function(person) {
+            key: 'person', label: t('admin.person'), type: 'select', required: true, value: '',
+            options: [{ value: '', label: t('admin.newPerson') }].concat(people.map(function(person) {
               return { value: person.email, label: person.name + ' (' + person.email + ')' };
             })),
-            hint: people.length > 0 ? 'Choose someone who registered before, or enter a new person below.' : null
+            hint: people.length > 0 ? t('admin.personHint') : null
           },
-          { key: 'name', label: 'Name', required: true, value: '' },
-          { key: 'email', label: 'Email address', type: 'email', required: true, value: '' },
-          { key: 'sendMail', label: 'Send them a confirmation email with a link to view or cancel the registration',
-            type: 'checkbox', value: true }
+          { key: 'name', label: t('common.name'), required: true, value: '' },
+          { key: 'email', label: t('common.emailAddress'), type: 'email', required: true, value: '' },
+          { key: 'sendMail', label: t('admin.sendMail'), type: 'checkbox', value: true }
         ], function(values) {
           var request = {
             eventId: event.id,
             name: values.name,
             email: values.email,
             sendMail: values.sendMail,
-            overbook: false
+            overbook: false,
+            lang: I18n.language()
           };
           return api('admin_add_booking', request).then(function(result) {
             // A full event: the admin decides whether to add the person anyway.
-            if (!result.ok && result.data.error === 'event_full' && window.confirm(
-                '“' + event.name + '” is full (' + result.data.registered + ' of ' + result.data.capacity +
-                ' places taken). Add ' + values.name + ' anyway?')) {
+            if (!result.ok && result.data.error === 'event_full' && window.confirm(t('admin.fullConfirm', {
+                event: event.name, registered: result.data.registered, max: result.data.capacity, name: values.name }))) {
               request.overbook = true;
               return api('admin_add_booking', request);
             }
@@ -986,9 +976,8 @@
           }).then(function(result) {
             if (result.ok) {
               var mailFailed = values.sendMail && !result.data.mailSent;
-              showNotice(values.name + ' has been added to “' + event.name + '”' + (values.sendMail ?
-                (mailFailed ? ', but the confirmation email could not be sent.' : ' and got a confirmation email.') :
-                '.'), mailFailed);
+              showNotice(t(values.sendMail ? (mailFailed ? 'admin.addedMailFailed' : 'admin.added') : 'admin.addedNoMail',
+                { name: values.name, event: event.name }), mailFailed);
             }
             return result;
           });
@@ -1050,7 +1039,7 @@
             input.checked = Boolean(field.value);
             label = el('label', 'checkbox-label', input, ' ' + field.label);
           } else {
-            label = el('label', null, field.label + (field.required ? '' : ' (optional)'), input);
+            label = el('label', null, field.label + (field.required ? '' : ' ' + t('common.optional')), input);
           }
           if (field.hint) {
             label.appendChild(el('span', 'field-hint', field.hint));
@@ -1090,16 +1079,15 @@
             }
             var error = result.data.error;
             if (error === 'capacity_below_registrations') {
-              showError(result.data.registered + ' people are already registered. Remove some of them first, ' +
-                'or choose a capacity of at least ' + result.data.registered + '.', 'capacity');
+              showError(t('editor.capacityBelow', { n: result.data.registered }), 'capacity');
             } else if (result.status === 403) {
-              showError('You are no longer logged in as admin in this browser.');
+              showError(t('common.notAdminAnymore'));
             } else {
-              showError(FIELD_ERRORS[error] || 'Saving failed. Please try again.', result.data.field);
+              showError(fieldError(error) || t('editor.saveFailed'), result.data.field);
             }
           }, function() {
             saveButton.disabled = false;
-            showError('Could not reach the server. Please try again.');
+            showError(t('common.unreachable'));
           });
         };
         form.querySelector('.js-editor-cancel').onclick = function() {
@@ -1121,7 +1109,7 @@
 
       function openEventEditor(event) {
         if (data.locations.length === 0) {
-          showNotice('Please add a location first.', true);
+          showNotice(t('editor.addLocationFirst'), true);
           return;
         }
         var isNew = event === null;
@@ -1137,47 +1125,45 @@
 
         var deleteButton = null;
         if (!isNew) {
-          deleteButton = button('Delete event', 'link-button editor-delete', function() {
+          deleteButton = button(t('editor.deleteEvent'), 'link-button editor-delete', function() {
             var count = event.registered;
-            if (!window.confirm('Delete “' + event.name + '”?' + (count > 0 ?
-                '\n\nThis also deletes its ' + count + (count === 1 ? ' registration' : ' registrations') +
-                '. The people are not notified.' : '') + '\n\nThis cannot be undone.')) {
+            if (!window.confirm(t('editor.deleteEventConfirm', { event: event.name }) +
+                (count > 0 ? '\n\n' + tn(count, 'editor.deleteEventRegistrations') : '') + '\n\n' + t('common.cannotUndo'))) {
               return;
             }
             api('admin_delete_event', { id: event.id }).then(function(result) {
               if (!result.ok) {
-                editor.showError('The event could not be deleted. Please try again.');
+                editor.showError(t('editor.deleteEventFailed'));
                 return;
               }
               editor.close();
-              showNotice('“' + event.name + '” has been deleted.', false);
+              showNotice(t('editor.eventDeleted', { event: event.name }), false);
               return reload();
             }, function() {
-              editor.showError('Could not reach the server. Please try again.');
+              editor.showError(t('common.unreachable'));
             });
           });
         }
 
-        var editor = openEditor(isNew ? 'Add event' : 'Edit event', [
-          { key: 'name', label: 'Name', required: true, value: isNew ? '' : event.name },
+        var editor = openEditor(isNew ? t('editor.addEvent') : t('editor.editEvent'), [
+          { key: 'name', label: t('common.name'), required: true, value: isNew ? '' : event.name },
           {
-            key: 'locationId', label: 'Location', type: 'select', required: true,
+            key: 'locationId', label: t('field.location'), type: 'select', required: true,
             value: isNew ? data.locations[0].id : event.locationId,
             options: data.locations.map(function(location) { return { value: location.id, label: location.name }; })
           },
-          { key: 'start', label: 'Start', type: 'datetime-local', required: true,
+          { key: 'start', label: t('field.start'), type: 'datetime-local', required: true,
             value: isNew ? local(start) : toInputDateTime(event.start) },
-          { key: 'end', label: 'End', type: 'datetime-local', required: true,
+          { key: 'end', label: t('field.end'), type: 'datetime-local', required: true,
             value: isNew ? local(new Date(start.getTime() + 3600000)) : toInputDateTime(event.end) },
-          { key: 'minimum', label: 'Minimum number of people needed', type: 'number',
-            value: isNew ? '' : event.minimum,
-            hint: 'Once reached, the event is shown in a lighter red. Leave empty for no minimum.' },
-          { key: 'capacity', label: 'Maximum number of people', type: 'number',
-            value: isNew ? '' : event.capacity, hint: 'Leave empty for no limit.' },
-          { key: 'responsible', label: 'Responsible', value: isNew ? '' : event.responsible,
-            hint: 'Names of the people in charge, e.g. “Anna, Ben”. Shown to volunteers.' },
-          { key: 'info', label: 'Description', type: 'textarea', value: isNew ? '' : event.info },
-          { key: 'url', label: 'Website', type: 'url', value: isNew ? '' : event.url }
+          { key: 'minimum', label: t('field.minimum'), type: 'number',
+            value: isNew ? '' : event.minimum, hint: t('field.minimumHint') },
+          { key: 'capacity', label: t('field.capacity'), type: 'number',
+            value: isNew ? '' : event.capacity, hint: t('field.capacityHint') },
+          { key: 'responsible', label: t('field.responsible'), value: isNew ? '' : event.responsible,
+            hint: t('field.responsibleHint') },
+          { key: 'info', label: t('field.description'), type: 'textarea', value: isNew ? '' : event.info },
+          { key: 'url', label: t('field.website'), type: 'url', value: isNew ? '' : event.url }
         ], function(values) {
           var capacity = values.capacity.trim();
           var minimum = values.minimum.trim();
@@ -1201,37 +1187,35 @@
         var isNew = location === null;
         var deleteButton = null;
         if (!isNew) {
-          deleteButton = button('Delete location', 'link-button editor-delete', function() {
+          deleteButton = button(t('editor.deleteLocation'), 'link-button editor-delete', function() {
             var eventCount = data.events.filter(function(event) { return event.locationId === location.id; }).length;
             if (eventCount > 0) {
-              editor.showError('This location still has ' + eventCount + (eventCount === 1 ? ' event' : ' events') +
-                '. Move them to another location or delete them first.');
+              editor.showError(tn(eventCount, 'editor.locationHasEvents'));
               return;
             }
-            if (!window.confirm('Delete the location “' + location.name + '”?')) {
+            if (!window.confirm(t('editor.deleteLocationConfirm', { location: location.name }))) {
               return;
             }
             api('admin_delete_location', { id: location.id }).then(function(result) {
               if (!result.ok) {
                 editor.showError(result.data.error === 'location_has_events' ?
-                  'This location still has events. Move them to another location or delete them first.' :
-                  'The location could not be deleted. Please try again.');
+                  t('editor.locationHasEventsGeneric') : t('editor.deleteLocationFailed'));
                 return;
               }
               editor.close();
-              showNotice('The location “' + location.name + '” has been deleted.', false);
+              showNotice(t('editor.locationDeleted', { location: location.name }), false);
               return reload();
             }, function() {
-              editor.showError('Could not reach the server. Please try again.');
+              editor.showError(t('common.unreachable'));
             });
           });
         }
 
-        var editor = openEditor(isNew ? 'Add location' : 'Edit location', [
-          { key: 'name', label: 'Name', required: true, value: isNew ? '' : location.name },
-          { key: 'url', label: 'Map or website link', type: 'url', value: isNew ? '' : location.url },
-          { key: 'info', label: 'Information', type: 'textarea', value: isNew ? '' : location.info,
-            hint: 'E.g. where volunteers check in.' }
+        var editor = openEditor(isNew ? t('editor.addLocation') : t('editor.editLocation'), [
+          { key: 'name', label: t('common.name'), required: true, value: isNew ? '' : location.name },
+          { key: 'url', label: t('field.mapLink'), type: 'url', value: isNew ? '' : location.url },
+          { key: 'info', label: t('field.information'), type: 'textarea', value: isNew ? '' : location.info,
+            hint: t('field.informationHint') }
         ], function(values) {
           return api('admin_save_location', {
             id: isNew ? null : location.id,
@@ -1253,22 +1237,22 @@
           return;
         }
 
-        bar.appendChild(button('+ Add event', 'button', function() {
+        bar.appendChild(button(t('editor.addEventButton'), 'button', function() {
           openEventEditor(null);
         }));
 
-        locationAdmin.appendChild(el('h2', null, 'Manage locations'));
+        locationAdmin.appendChild(el('h2', null, t('editor.manageLocations')));
         var list = locationAdmin.appendChild(el('ul', 'location-admin-list'));
         data.locations.forEach(function(location) {
           var eventCount = data.events.filter(function(event) { return event.locationId === location.id; }).length;
           list.appendChild(el('li', null,
             el('span', 'location-admin-name', location.name),
-            el('span', 'hint', eventCount + (eventCount === 1 ? ' event' : ' events')),
-            button('Edit', 'button button-secondary admin-edit-button', function() {
+            el('span', 'hint', tn(eventCount, 'editor.eventCount')),
+            button(t('common.edit'), 'button button-secondary admin-edit-button', function() {
               openLocationEditor(location);
             })));
         });
-        locationAdmin.appendChild(button('+ Add location', 'button', function() {
+        locationAdmin.appendChild(button(t('editor.addLocationButton'), 'button', function() {
           openLocationEditor(null);
         }));
       }
@@ -1299,16 +1283,16 @@
           var name = form.elements.name.value.trim();
           var email = form.elements.email.value.trim();
           if (name === '') {
-            showMessage('Please enter your name.');
+            showMessage(t('form.enterYourName'));
             return;
           }
           if (email === '' || !form.elements.email.checkValidity()) {
-            showMessage('Please enter a valid email address.');
+            showMessage(t('form.invalidEmail'));
             return;
           }
 
           submit.disabled = true;
-          api('claim_admin', { name: name, email: email }).then(function(result) {
+          api('claim_admin', { name: name, email: email, lang: I18n.language() }).then(function(result) {
             submit.disabled = false;
             if (result.ok) {
               saveContact(name, email);
@@ -1317,15 +1301,14 @@
               return reload();
             }
             if (result.data.error === 'admin_exists') {
-              showMessage('Someone else has just become admin.');
+              showMessage(t('setup.someoneElse'));
               return reload();
             }
-            showMessage(result.data.error === 'invalid_name' ? 'Please enter a name of at most 80 characters.' :
-              result.data.error === 'invalid_email' ? 'Please enter a valid email address.' :
-              'Something went wrong. Please try again later.');
+            showMessage(result.data.error === 'invalid_name' ? t('form.nameTooLong') :
+              result.data.error === 'invalid_email' ? t('form.invalidEmail') : t('setup.failed'));
           }, function() {
             submit.disabled = false;
-            showMessage('Could not reach the server. Please try again.');
+            showMessage(t('common.unreachable'));
           });
         });
       }
@@ -1336,23 +1319,22 @@
         var input = el('input');
         input.readOnly = true;
         input.value = result.adminLink;
-        input.setAttribute('aria-label', 'Your admin link');
-        var copy = button('Copy', 'button button-secondary', function() {
+        input.setAttribute('aria-label', t('admin.linkTitle'));
+        var copy = button(t('common.copy'), 'button button-secondary', function() {
           input.select();
           var copied = navigator.clipboard ?
             navigator.clipboard.writeText(input.value) :
             Promise.reject(new Error('Clipboard not available'));
-          copied.then(function() { copy.textContent = 'Copied'; }, function() { copy.textContent = 'Press Ctrl+C'; });
+          copied.then(function() { copy.textContent = t('common.copied'); }, function() { copy.textContent = t('common.pressCtrlC'); });
         });
 
         done.textContent = '';
-        done.appendChild(el('p', null, el('strong', null, 'You’re now the admin, ' + result.admin.name + '!'),
-          ' You stay logged in as admin in this browser. To log in on another device or browser, use this link:'));
+        done.appendChild(el('p', null, el('strong', null, t('setup.doneTitle', { name: result.admin.name })),
+          ' ' + t('setup.doneText')));
         done.appendChild(el('div', 'edit-link-row', input, copy));
         done.appendChild(el('p', 'hint', result.mailSent ?
-          'We also sent the link to ' + result.admin.email + '. Keep it safe: anyone with it can manage all registrations.' :
-          'We could not send this link by email, so please save it now. Anyone with it can manage all registrations.'));
-        done.appendChild(el('p', null, button('Done', 'button', function() {
+          t('setup.mailSent', { email: result.admin.email }) : t('setup.mailFailed')));
+        done.appendChild(el('p', null, button(t('common.done'), 'button', function() {
           done.hidden = true;
           renderAdminSetup();
         })));
@@ -1365,12 +1347,12 @@
         input.readOnly = true;
         input.value = link;
         input.setAttribute('aria-label', label);
-        var copy = button('Copy', 'button button-secondary', function() {
+        var copy = button(t('common.copy'), 'button button-secondary', function() {
           input.select();
           var copied = navigator.clipboard ?
             navigator.clipboard.writeText(input.value) :
             Promise.reject(new Error('Clipboard not available'));
-          copied.then(function() { copy.textContent = 'Copied'; }, function() { copy.textContent = 'Press Ctrl+C'; });
+          copied.then(function() { copy.textContent = t('common.copied'); }, function() { copy.textContent = t('common.pressCtrlC'); });
         });
         return el('div', 'edit-link-row', input, copy);
       }
@@ -1399,25 +1381,22 @@
       }
 
       function renderInviteLinkBox() {
-        var box = el('div', 'admin-link-box', el('h2', null, 'Invitation link for volunteers'));
-        box.appendChild(el('p', 'hint', 'Send this link to everyone who should be able to register. ' +
-          'Without it, the page shows nothing. Everyone gets the same link; it doesn’t give admin rights.'));
+        var box = el('div', 'admin-link-box', el('h2', null, t('admin.inviteTitle')));
+        box.appendChild(el('p', 'hint', t('admin.inviteHint')));
         if (inviteLink) {
-          box.appendChild(renderLinkRow(inviteLink, 'Invitation link for volunteers'));
+          box.appendChild(renderLinkRow(inviteLink, t('admin.inviteTitle')));
         }
         return box;
       }
 
       function renderAdminLinkBox() {
         var link = loadAdminLink();
-        var box = el('div', 'admin-link-box', el('h2', null, 'Your admin link'));
+        var box = el('div', 'admin-link-box', el('h2', null, t('admin.linkTitle')));
         if (link) {
-          box.appendChild(el('p', 'hint', 'Open this link to log in as admin on another device or browser. ' +
-            'Keep it safe: anyone with it can manage everything here.'));
-          box.appendChild(renderLinkRow(link, 'Your admin link'));
+          box.appendChild(el('p', 'hint', t('admin.linkHint')));
+          box.appendChild(renderLinkRow(link, t('admin.linkTitle')));
         } else {
-          box.appendChild(el('p', 'hint', 'This browser doesn’t have your admin link saved. You find it in the ' +
-            'email you got when you became admin; opening it once here also saves it in this browser.'));
+          box.appendChild(el('p', 'hint', t('admin.linkMissing')));
         }
         return box;
       }
@@ -1452,11 +1431,11 @@
 
         return [
           {
-            name: 'Registrations',
+            name: t('excel.registrations'),
             columns: [
-              { title: 'Event', width: 28 }, { title: 'Start', width: 17 }, { title: 'End', width: 17 },
-              { title: 'Location', width: 18 }, { title: 'Name', width: 22 }, { title: 'Email', width: 30 },
-              { title: 'Registered at', width: 17 }
+              { title: t('excel.event'), width: 28 }, { title: t('excel.start'), width: 17 }, { title: t('excel.end'), width: 17 },
+              { title: t('excel.location'), width: 18 }, { title: t('excel.name'), width: 22 }, { title: t('excel.email'), width: 30 },
+              { title: t('excel.registeredAt'), width: 17 }
             ],
             rows: registrations.map(function(entry) {
               return [entry.event.name, parseLocal(entry.event.start), parseLocal(entry.event.end), entry.event.location,
@@ -1464,13 +1443,13 @@
             })
           },
           {
-            name: 'Events',
+            name: t('excel.events'),
             columns: [
-              { title: 'Event', width: 28 }, { title: 'Start', width: 17 }, { title: 'End', width: 17 },
-              { title: 'Location', width: 18 }, { title: 'Minimum', width: 10 }, { title: 'Maximum', width: 10 },
-              { title: 'Registered', width: 11 },
-              { title: 'Places left', width: 11 }, { title: 'Responsible', width: 22 },
-              { title: 'Who’s coming', width: 40 }, { title: 'Description', width: 40 }, { title: 'Website', width: 25 }
+              { title: t('excel.event'), width: 28 }, { title: t('excel.start'), width: 17 }, { title: t('excel.end'), width: 17 },
+              { title: t('excel.location'), width: 18 }, { title: t('excel.minimum'), width: 10 }, { title: t('excel.maximum'), width: 10 },
+              { title: t('excel.registered'), width: 11 },
+              { title: t('excel.placesLeft'), width: 11 }, { title: t('excel.responsible'), width: 22 },
+              { title: t('excel.whoIsComing'), width: 40 }, { title: t('excel.description'), width: 40 }, { title: t('excel.website'), width: 25 }
             ],
             rows: data.events.slice().sort(byStart).map(function(event) {
               return [event.name, parseLocal(event.start), parseLocal(event.end), event.location,
@@ -1480,10 +1459,10 @@
             })
           },
           {
-            name: 'People',
+            name: t('excel.people'),
             columns: [
-              { title: 'Name', width: 22 }, { title: 'Email', width: 30 }, { title: 'Registrations', width: 13 },
-              { title: 'Events', width: 60 }
+              { title: t('excel.name'), width: 22 }, { title: t('excel.email'), width: 30 }, { title: t('excel.registrationCount'), width: 13 },
+              { title: t('excel.events'), width: 60 }
             ],
             rows: adminUsers.map(function(user) {
               var events = user.bookings
@@ -1495,10 +1474,10 @@
             })
           },
           {
-            name: 'Locations',
+            name: t('excel.locations'),
             columns: [
-              { title: 'Location', width: 22 }, { title: 'Events', width: 9 }, { title: 'Link', width: 30 },
-              { title: 'Information', width: 50 }
+              { title: t('excel.location'), width: 22 }, { title: t('excel.events'), width: 9 }, { title: t('excel.link'), width: 30 },
+              { title: t('excel.information'), width: 50 }
             ],
             rows: data.locations.map(function(location) {
               var count = data.events.filter(function(event) { return event.locationId === location.id; }).length;
@@ -1513,7 +1492,7 @@
         var now = new Date();
         var pad = function(n) { return (n < 10 ? '0' : '') + n; };
         // File name from the page title, e.g. "Mix-It-Cup-2026_2026-11-10.xlsx".
-        var base = (page.title || 'VolunteerTable').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '') || 'VolunteerTable';
+        var base = (pageTitle() || 'VolunteerTable').replace(/[^\w\-]+/g, '-').replace(/^-+|-+$/g, '') || 'VolunteerTable';
         var link = el('a');
         link.href = URL.createObjectURL(new Blob([bytes], { type: Xlsx.MIME_TYPE }));
         link.download = base + '_' + now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + '.xlsx';
@@ -1532,25 +1511,24 @@
         }
 
         var bookingCount = adminUsers.reduce(function(sum, user) { return sum + user.bookings.length; }, 0);
-        panel.appendChild(el('p', 'hint', 'Logged in as admin: ' + admin.name + ' (' + admin.email + ') · ' +
-          adminUsers.length + (adminUsers.length === 1 ? ' person' : ' people') + ', ' +
-          bookingCount + (bookingCount === 1 ? ' registration' : ' registrations')));
+        panel.appendChild(el('p', 'hint', t('admin.loggedInAs', { name: admin.name, email: admin.email }) + ' · ' +
+          tn(adminUsers.length, 'admin.people') + ', ' + tn(bookingCount, 'admin.registrations')));
 
-        panel.appendChild(el('p', 'admin-export', button('Download as Excel', 'button', downloadExcel),
-          el('span', 'hint', 'All registrations, events, people and locations in one .xlsx file.')));
+        panel.appendChild(el('p', 'admin-export', button(t('admin.excel'), 'button', downloadExcel),
+          el('span', 'hint', t('admin.excelHint'))));
 
         panel.appendChild(renderInviteLinkBox());
         panel.appendChild(renderAdminLinkBox());
 
         if (adminUsers.length === 0) {
-          panel.appendChild(el('p', null, 'Nobody has registered for an event yet.'));
+          panel.appendChild(el('p', null, t('admin.nobodyYet')));
           return;
         }
 
         var filter = el('input', 'admin-filter');
         filter.type = 'search';
-        filter.placeholder = 'Filter by name, email or event…';
-        filter.setAttribute('aria-label', 'Filter people');
+        filter.placeholder = t('admin.filter');
+        filter.setAttribute('aria-label', t('admin.filterLabel'));
         panel.appendChild(filter);
 
         var list = panel.appendChild(el('div', 'admin-user-list'));
@@ -1558,7 +1536,7 @@
           var article = list.appendChild(el('article', 'admin-user'));
           article.appendChild(el('div', 'admin-user-header',
             el('h2', null, user.names.join(' / '), ' ', el('span', 'admin-user-email', user.email)),
-            button('Remove user', 'button button-secondary admin-remove-user', function() {
+            button(t('admin.removeUser'), 'button button-secondary admin-remove-user', function() {
               removeUser(user);
             })));
 
@@ -1576,8 +1554,8 @@
               el('span', 'admin-booking-details',
                 el('span', 'location-event-time', formatTimeRange(new Date(event.start), new Date(event.end))), ' ',
                 eventLink, ' · ', locationLink(event.location, locationInfoIds),
-                user.names.length > 1 ? ' (as ' + booking.name + ')' : null),
-              button('Remove', 'link-button', function() {
+                user.names.length > 1 ? ' ' + t('admin.asName', { name: booking.name }) : null),
+              button(t('common.remove'), 'link-button', function() {
                 removeBooking({ id: booking.id, name: booking.name, email: user.email }, event);
               })));
             item.classList.toggle('is-past', new Date(event.end).getTime() <= Date.now());
@@ -1614,12 +1592,12 @@
         return api('admin_login', { token: token }).then(function(result) {
           if (result.ok) {
             saveAdminLink(window.location.origin + window.location.pathname + '?admin=' + token + '#admin-tab');
-            showNotice('You are now logged in as admin in this browser.', false);
+            showNotice(t('admin.loggedIn'), false);
           } else {
-            showNotice('This admin link is not valid.', true);
+            showNotice(t('admin.invalidLink'), true);
           }
         }, function() {
-          showNotice('Could not reach the server to open the admin link. Please reload the page.', true);
+          showNotice(t('admin.linkUnreachable'), true);
         });
       }
 
@@ -1645,27 +1623,35 @@
 
       var hasAccess = false;
       var inviteLink = null;
-      var page = { title: '', intro: '' };
+      var page = { title: null, intro: null };
 
       // Page title and intro (editable by the admin via the Edit button next to the title).
+      // The admin's title and intro, or the default texts in the visitor's language.
+      function pageTitle() {
+        return page.title !== null ? page.title : t('page.defaultTitle');
+      }
+
+      function pageIntro() {
+        return page.intro !== null ? page.intro : t('page.defaultIntro');
+      }
+
       function renderPageTexts() {
-        document.title = page.title;
+        document.title = pageTitle();
         var titleNode = document.getElementById('page-title');
-        titleNode.textContent = page.title;
+        titleNode.textContent = pageTitle();
         if (admin !== null) {
-          titleNode.appendChild(button('Edit', 'button button-secondary admin-edit-button', openPageEditor));
+          titleNode.appendChild(button(t('common.edit'), 'button button-secondary admin-edit-button', openPageEditor));
         }
         var intro = document.getElementById('page-intro');
-        intro.textContent = page.intro;
-        intro.hidden = page.intro === '';
+        intro.textContent = pageIntro();
+        intro.hidden = pageIntro() === '';
         document.getElementById('hero').hidden = false;
       }
 
       function openPageEditor() {
-        openEditor('Edit title and introduction', [
-          { key: 'title', label: 'Title', required: true, value: page.title },
-          { key: 'intro', label: 'Introduction', type: 'textarea', value: page.intro,
-            hint: 'Shown below the title to everyone, also before they open the invitation link.' }
+        openEditor(t('editor.editPage'), [
+          { key: 'title', label: t('field.title'), required: true, value: pageTitle() },
+          { key: 'intro', label: t('field.intro'), type: 'textarea', value: pageIntro(), hint: t('field.introHint') }
         ], function(values) {
           return api('admin_save_page', { title: values.title, intro: values.intro });
         });
@@ -1726,10 +1712,10 @@
 
         return api('join', { token: token }).then(function(result) {
           if (!result.ok) {
-            showNotice('This invitation link is not valid. Please check that you copied the whole link.', true);
+            showNotice(t('links.invalidInvite'), true);
           }
         }, function() {
-          showNotice('Could not reach the server to open the invitation link. Please reload the page.', true);
+          showNotice(t('links.inviteUnreachable'), true);
         });
       }
 
@@ -1748,15 +1734,13 @@
 
         return api('open', { token: token }).then(function(result) {
           if (!result.ok) {
-            showNotice('This edit link is not valid (anymore). If the registration was cancelled, it no longer exists.', true);
+            showNotice(t('links.invalidEditLink'), true);
             return null;
           }
-          showNotice(result.data.emailLinked ?
-            'All your registrations with this email address are now shown under “My events” in this browser.' :
-            'This registration is now shown under “My events” in this browser.', false);
+          showNotice(result.data.emailLinked ? t('links.emailLinked') : t('links.bookingLinked'), false);
           return result.data.bookingId;
         }, function() {
-          showNotice('Could not reach the server to open the edit link. Please reload the page.', true);
+          showNotice(t('links.editLinkUnreachable'), true);
           return null;
         });
       }
@@ -1801,6 +1785,33 @@
       document.addEventListener('visibilitychange', checkForUpdates);
       window.addEventListener('focus', checkForUpdates);
 
+      /* ------------------------------------------------------------------
+       * Language
+       * ------------------------------------------------------------------ */
+
+      function initLanguageSwitch() {
+        var select = document.getElementById('language-select');
+        I18n.languages().forEach(function(language) {
+          var option = select.appendChild(el('option', null, language.name));
+          option.value = language.code;
+        });
+        select.value = I18n.language();
+        select.addEventListener('change', function() {
+          I18n.setLanguage(select.value);
+        });
+      }
+
+      // Switching the language redraws everything that was built with texts.
+      I18n.onChange(function() {
+        document.getElementById('language-select').value = I18n.language();
+        renderPageTexts();
+        if (hasAccess) {
+          renderAll();
+        }
+      });
+
+      I18n.applyStatic();
+      initLanguageSwitch();
       initAdminSetupForm();
 
       openInviteLink()

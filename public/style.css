@@ -1331,3 +1331,65 @@ a:hover {
   background-color: #D6D6D6;
   border-color: #B0B0B0;
 }
+
+/* Language switch in the top-right corner */
+body {
+  position: relative;
+}
+
+.language-switch {
+  position: absolute;
+  top: 10px;
+  right: 0;
+  z-index: 11;
+}
+
+.language-switch label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.language-switch label::before {
+  content: '🌐';
+  font-size: 1rem;
+}
+
+.language-switch select {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: white;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+/* Keep the title clear of the switch. */
+.hero-unit {
+  padding-right: 130px;
+}
+
+/* Hidden visually, but read out by screen readers. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .language-switch {
+    top: 4px;
+  }
+
+  .hero-unit {
+    padding-right: 0;
+    padding-top: 28px;
+  }
+}

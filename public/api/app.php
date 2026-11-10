@@ -308,10 +308,10 @@ function create_booking(string $eventId, string $name, string $email, bool $allo
  * Sends the confirmation with the edit link; returns whether that worked.
  * $registeredBy: 'self', 'someone_else' or 'admin' (changes the wording).
  */
-function send_booking_mail(array $created, string $registeredBy): bool
+function send_booking_mail(array $created, string $registeredBy, string $lang): bool
 {
     try {
-        vt_send_booking_mail($created['booking'], $created['event'], $created['mailToken'], $registeredBy);
+        vt_send_booking_mail($created['booking'], $created['event'], $created['mailToken'], $registeredBy, $lang);
         return true;
     } catch (Throwable $e) {
         error_log('[volunteertable] Could not send booking mail: ' . $e->getMessage());
@@ -408,7 +408,7 @@ try {
                 // with their own link, so nobody is registered without knowing.
                 respond(201, [
                     'booking' => ['eventId' => $eventId, 'name' => $name],
-                    'mailSent' => send_booking_mail($result, 'someone_else'),
+                    'mailSent' => send_booking_mail($result, 'someone_else', vt_mail_language($input['lang'] ?? null)),
                 ]);
             }
 
@@ -419,7 +419,7 @@ try {
             respond(201, [
                 'booking' => public_booking($result['booking']),
                 'editLink' => vt_edit_link($result['editToken'], false),
-                'mailSent' => send_booking_mail($result, 'self'),
+                'mailSent' => send_booking_mail($result, 'self', vt_mail_language($input['lang'] ?? null)),
             ]);
 
         case 'admin_add_booking':
@@ -441,7 +441,7 @@ try {
             $sendMail = ($input['sendMail'] ?? true) !== false;
             respond(201, [
                 'booking' => public_booking($result['booking']),
-                'mailSent' => $sendMail ? send_booking_mail($result, 'admin') : false,
+                'mailSent' => $sendMail ? send_booking_mail($result, 'admin', vt_mail_language($input['lang'] ?? null)) : false,
             ]);
 
         case 'open':
@@ -517,7 +517,7 @@ try {
 
             $mailSent = true;
             try {
-                vt_send_admin_mail($admin, $token);
+                vt_send_admin_mail($admin, $token, vt_mail_language($input['lang'] ?? null));
             } catch (Throwable $e) {
                 error_log('[volunteertable] Could not send admin mail: ' . $e->getMessage());
                 $mailSent = false;
@@ -753,7 +753,7 @@ try {
 
             if ($result !== null) {
                 try {
-                    vt_send_booking_mail($result, find_event($eventId), $mailToken);
+                    vt_send_booking_mail($result, find_event($eventId), $mailToken, 'self', vt_mail_language($input['lang'] ?? null));
                 } catch (Throwable $e) {
                     error_log('[volunteertable] Could not send booking mail: ' . $e->getMessage());
                     respond(502, ['error' => 'mail_failed']);

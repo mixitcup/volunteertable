@@ -422,13 +422,14 @@ function vt_bump_data_version(): void
  * Page texts the admin can edit
  * ------------------------------------------------------------------------- */
 
+// Null means "not set by the admin": the page then shows its default text in the
+// visitor's language (keys page.defaultTitle / page.defaultIntro in public/lang/*.js).
 const VT_PAGE_TEXT_DEFAULTS = [
-    'page_title' => 'VolunteerTable',
-    'page_intro' => "Thank you for volunteering! This event only works because of people like you.\n"
-        . 'Have a look at the timetable and pick the shifts you would like to help with.',
+    'page_title' => null,
+    'page_intro' => null,
 ];
 
-/** Title and intro text of the page, falling back to the defaults. */
+/** Title and intro text of the page as set by the admin, or null where not set. */
 function vt_page_texts(): array
 {
     $texts = VT_PAGE_TEXT_DEFAULTS;
@@ -549,6 +550,42 @@ function vt_mail_method(): string
     return $method;
 }
 
+/* ---------------------------------------------------------------------------
+ * Email texts: one file per language in private/lang/ (en.php, de.php, ...),
+ * all with the same keys; missing texts fall back to English.
+ * ------------------------------------------------------------------------- */
+
+/** The language code if there is a text file for it, otherwise 'en'. */
+function vt_mail_language($lang): string
+{
+    return is_string($lang) && preg_match('/^[a-z]{2}$/', $lang) === 1 && is_file(__DIR__ . "/lang/$lang.php")
+        ? $lang : 'en';
+}
+
+function vt_mail_texts(string $lang): array
+{
+    static $cache = [];
+    $lang = vt_mail_language($lang);
+    if (!isset($cache[$lang])) {
+        $english = require __DIR__ . '/lang/en.php';
+        $cache[$lang] = $lang === 'en' ? $english : array_replace($english, require __DIR__ . "/lang/$lang.php");
+    }
+    return $cache[$lang];
+}
+
+function vt_fill(string $text, array $params): string
+{
+    return preg_replace_callback('/\{(\w+)\}/', function (array $match) use ($params) {
+        return array_key_exists($match[1], $params) ? (string) $params[$match[1]] : $match[0];
+    }, $text);
+}
+
+function vt_mail_text(string $lang, string $key, array $params = []): string
+{
+    $texts = vt_mail_texts($lang);
+    return vt_fill(isset($texts[$key]) && is_string($texts[$key]) ? $texts[$key] : $key, $params);
+}
+
 /** Sends a plain-text mail (or logs it, see vt_mail_method()). Throws on failure. */
 function vt_send_mail(string $toEmail, string $toName, string $subject, string $body): void
 {
@@ -607,30 +644,40 @@ function vt_php_mail(string $fromEmail, string $fromName, string $toEmail, strin
 }
 
 /** Sends the admin their login link. Throws on failure. */
-function vt_send_admin_mail(array $admin, string $token): void
+function vt_send_admin_mail(array $admin, string $token, string $lang = 'en'): void
 {
     $link = vt_admin_link($token, true);
     if ($link === null) {
         throw new RuntimeException('base_url must be configured to send mails');
     }
 
-    vt_send_mail($admin['email'], $admin['name'], 'Your admin link for the volunteer table',
-        "Hello {$admin['name']},\n\n"
-        . "you are now the admin of the volunteer table. To log in as admin, also on\n"
-        . "another device or browser, open this link:\n\n"
+    vt_send_mail($admin['email'], $admin['name'], vt_mail_text($lang, 'admin.subject'),
+        vt_mail_text($lang, 'admin.hello', ['name' => $admin['name']]) . "\n\n"
+        . vt_mail_text($lang, 'admin.intro') . "\n\n"
         . "{$link}\n\n"
-        . "Anyone with this link can manage all registrations, so please keep it safe.\n");
+        . vt_mail_text($lang, 'admin.keepSafe') . "\n");
 }
 
-function vt_format_event_time(array $event): string
+/** E.g. "Wed 11 Nov 2026, 10:00 – 13:00", in the given language. */
+function vt_format_event_time(array $event, string $lang = 'en'): string
 {
     $start = DateTime::createFromFormat('Y-m-d\TH:i:s', $event['starts_at']);
     $end = DateTime::createFromFormat('Y-m-d\TH:i:s', $event['ends_at']);
     if ($start === false || $end === false) {
         return $event['starts_at'] . ' – ' . $event['ends_at'];
     }
+    $locale = vt_mail_texts($lang)['locale'];
+    $date = function (DateTime $d) use ($locale): string {
+        return vt_fill($locale['date'], [
+            'day' => $locale['days'][(int) $d->format('N') - 1],
+            'd' => $d->format('j'),
+            'month' => $locale['months'][(int) $d->format('n') - 1],
+            'year' => $d->format('Y'),
+        ]);
+    };
     $sameDay = $start->format('Y-m-d') === $end->format('Y-m-d');
-    return $start->format('D j M Y, H:i') . ' – ' . $end->format($sameDay ? 'H:i' : 'D j M Y, H:i');
+    return $date($start) . ', ' . $start->format('H:i') . ' – '
+        . ($sameDay ? '' : $date($end) . ', ') . $end->format('H:i');
 }
 
 /**
@@ -638,35 +685,33 @@ function vt_format_event_time(array $event): string
  * $registeredBy: 'self', 'someone_else' or 'admin'; people registered by others
  * are told so, and that they can cancel if it wasn't intended.
  */
-function vt_send_booking_mail(array $booking, array $event, string $mailToken, string $registeredBy = 'self'): void
+function vt_send_booking_mail(array $booking, array $event, string $mailToken, string $registeredBy = 'self',
+    string $lang = 'en'): void
 {
     $link = vt_edit_link($mailToken, true);
     if ($link === null) {
         throw new RuntimeException('base_url must be configured to send mails');
     }
+    if (!in_array($registeredBy, ['self', 'someone_else', 'admin'], true)) {
+        $registeredBy = 'self';
+    }
 
-    $intro = [
-        'self' => "you are registered for:\n\n",
-        'someone_else' => "someone has registered you for:\n\n",
-        'admin' => "an organizer has registered you for:\n\n",
-    ][$registeredBy] ?? "you are registered for:\n\n";
-    $notIntended = $registeredBy === 'self' ? ''
-        : "If you didn't expect this or can't make it, you can cancel with the link below.\n\n";
-
-    $subject = 'Your registration: ' . $event['name'];
-    $body = "Hello {$booking['name']},\n\n"
-        . $intro
+    $text = function (string $key, array $params = []) use ($lang): string {
+        return vt_mail_text($lang, $key, $params);
+    };
+    $responsible = $event['responsible'] ?? null;
+    $subject = $text('booking.subject', ['event' => $event['name']]);
+    $body = $text('booking.hello', ['name' => $booking['name']]) . "\n\n"
+        . $text('booking.intro.' . $registeredBy) . "\n\n"
         . "  {$event['name']}\n"
-        . '  ' . vt_format_event_time($event) . "\n"
+        . '  ' . vt_format_event_time($event, $lang) . "\n"
         . "  {$event['location_name']}\n"
-        . (($event['responsible'] ?? null) !== null ? "  Responsible: {$event['responsible']}\n" : '')
+        . ($responsible !== null ? '  ' . $text('booking.responsible', ['names' => $responsible]) . "\n" : '')
         . "\n"
-        . $notIntended
-        . "To change or cancel your registration, open this link:\n\n"
+        . ($registeredBy === 'self' ? '' : $text('booking.notIntended') . "\n\n")
+        . $text('booking.linkIntro') . "\n\n"
         . "{$link}\n\n"
-        . "Opening the link also shows all your registrations made with this email\n"
-        . "address under \"My events\" in that browser.\n"
-        . "Anyone with this link can change your registration, so please don't share it.\n";
+        . $text('booking.linkInfo') . "\n";
 
     vt_send_mail($booking['email'], $booking['name'], $subject, $body);
 }
