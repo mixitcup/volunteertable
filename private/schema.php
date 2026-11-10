@@ -25,6 +25,7 @@ function vt_schema_statements(string $driver): array
 
         // Start and end are local times as written, e.g. "2026-11-09T09:30:00".
         // "responsible": names of the people in charge, as free text.
+        // "min_helpers": how many people are needed at least (null: no minimum).
         'CREATE TABLE IF NOT EXISTS vt_events (
             id VARCHAR(32) NOT NULL PRIMARY KEY,
             location_id VARCHAR(32) NOT NULL REFERENCES vt_locations (id),
@@ -34,7 +35,8 @@ function vt_schema_statements(string $driver): array
             capacity INTEGER NULL,
             info TEXT NULL,
             url VARCHAR(2000) NULL,
-            responsible VARCHAR(500) NULL
+            responsible VARCHAR(500) NULL,
+            min_helpers INTEGER NULL
         )' . $options,
 
         // Each booking has two tokens: the edit token is shown on the page right
@@ -118,6 +120,7 @@ function vt_added_columns(): array
 {
     return [
         ['vt_events', 'responsible', 'VARCHAR(500) NULL'],
+        ['vt_events', 'min_helpers', 'INTEGER NULL'],
     ];
 }
 
@@ -182,8 +185,8 @@ function vt_import_seed(PDO $db, string $dir): void
         }
 
         $insertEvent = $db->prepare(
-            'INSERT INTO vt_events (id, location_id, name, starts_at, ends_at, capacity, info, url, responsible)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO vt_events (id, location_id, name, starts_at, ends_at, capacity, info, url, responsible, min_helpers)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $insertBooking = $db->prepare(
             'INSERT INTO vt_bookings (id, event_id, name, email, email_key, edit_token_hash, mail_token_hash, created_at)
@@ -204,6 +207,7 @@ function vt_import_seed(PDO $db, string $dir): void
                 $event['info'] ?? null,
                 $event['url'] ?? null,
                 $event['responsible'] ?? null,
+                isset($event['minimum']) ? (int) $event['minimum'] : null,
             ]);
             foreach ($event['bookings'] ?? [] as $index => $booking) {
                 // Random tokens nobody knows: example bookings can't be edited via link.

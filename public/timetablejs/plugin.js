@@ -561,16 +561,48 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				eventNode.style.left = left + 'px';
 				eventNode.style.top = lane * Timetable.ROW_HEIGHT + 'px';
 				eventNode.style.width = Math.max(layout.positionOf(event.endDate) - left, 0) + 'px';
-				smallNode.textContent = event.name;
+				// The top line holds the name and, if known, the count next to it.
+				var nameNode = smallNode.appendChild(document.createElement('span'));
+				nameNode.className = 'time-entry-name';
+				nameNode.textContent = event.name;
 				trackEventNode(event, eventNode);
 
-				if (hasOptions && isValidRegistration(event.options.registered, event.options.capacity)) {
+				var hasCapacity = hasOptions && isValidRegistration(event.options.registered, event.options.capacity);
+				if (hasCapacity) {
 					appendRegistrationBar(event, eventNode);
 				}
+				// Optional minimum of people needed: marks whether it is reached
+				// (styled lighter in plugin.css), so events still needing help stand out.
+				if (hasOptions && hasMinimum(event)) {
+					var reached = (event.options.registered || 0) >= event.options.minimum;
+					eventNode.className += reached ? ' is-minimum-reached' : ' is-below-minimum';
+					eventNode.title += reached ? ' – minimum of ' + event.options.minimum + ' reached' :
+						' – at least ' + event.options.minimum + ' needed';
+				}
+				if (hasCapacity || (hasOptions && hasMinimum(event) && typeof event.options.registered === 'number')) {
+					appendRegistrationCount(event, eventNode, smallNode);
+				}
+			}
+			// "5/15", with the minimum if there is one: "5/15 · min 5" (or "2 · min 5" without a maximum).
+			function appendRegistrationCount(event, eventNode, smallNode) {
+				var text = String(event.options.registered);
+				if (isValidRegistration(event.options.registered, event.options.capacity)) {
+					text += '/' + event.options.capacity;
+				}
+				if (hasMinimum(event)) {
+					text += ' (min. ' + event.options.minimum + ')';
+				}
+				eventNode.className += ' has-count';
+				var countNode = smallNode.appendChild(document.createElement('span'));
+				countNode.className = 'registration-count';
+				countNode.textContent = text;
 			}
 			function isValidRegistration(registered, capacity) {
 				return typeof registered === 'number' && typeof capacity === 'number' &&
 					registered >= 0 && capacity > 0;
+			}
+			function hasMinimum(event) {
+				return typeof event.options.minimum === 'number' && event.options.minimum > 0;
 			}
 			function appendRegistrationBar(event, eventNode) {
 				var registered = event.options.registered;
@@ -596,9 +628,12 @@ Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
 				fillNode.className = 'registration-bar-fill';
 				fillNode.style.width = ratio * 100 + '%';
 
-				var countNode = eventNode.appendChild(document.createElement('span'));
-				countNode.className = 'registration-count';
-				countNode.textContent = countText;
+				// A small mark where the minimum is.
+				if (hasMinimum(event) && event.options.minimum < capacity) {
+					var minimumNode = barNode.appendChild(document.createElement('span'));
+					minimumNode.className = 'registration-bar-minimum';
+					minimumNode.style.left = event.options.minimum / capacity * 100 + '%';
+				}
 			}
 			// Nodes that get marked as past/current as time goes on.
 			function trackEventNode(event, node) {

@@ -35,7 +35,8 @@ declare(strict_types=1);
  *   POST app.php?action=admin_remove_user { email }  -> { removed }  all registrations of that address
  *   POST app.php?action=admin_save_location { id?, name, url, info }  -> { id }  creates without id
  *   POST app.php?action=admin_delete_location { id } -> { ok } | 409 location_has_events
- *   POST app.php?action=admin_save_event { id?, name, locationId, start, end, capacity, info, url, responsible }
+ *   POST app.php?action=admin_save_event { id?, name, locationId, start, end, capacity, minimum, info, url,
+ *                                      responsible }
  *                                      -> { id }
  *                                      start/end as "YYYY-MM-DDTHH:MM"; capacity null = unlimited
  *   POST app.php?action=admin_delete_event { id }    -> { removedRegistrations }
@@ -126,6 +127,7 @@ function list_events(): array
             'info' => $event['info'],
             'url' => $event['url'],
             'responsible' => $event['responsible'],
+            'minimum' => $event['min_helpers'] === null ? null : (int) $event['min_helpers'],
             'registered' => count($names),
             'attendees' => $names,
         ];
@@ -637,6 +639,7 @@ try {
                 'url' => input_url($input, 'url'),
                 'capacity' => $input['capacity'] ?? null,
                 'responsible' => input_line($input, 'responsible', 500),
+                'min_helpers' => $input['minimum'] ?? null,
             ];
             if ($event['ends_at'] <= $event['starts_at']) {
                 respond(400, ['error' => 'end_before_start', 'field' => 'end']);
@@ -644,18 +647,24 @@ try {
             if ($event['capacity'] !== null && (!is_int($event['capacity']) || $event['capacity'] < 1 || $event['capacity'] > 100000)) {
                 respond(400, ['error' => 'invalid_capacity', 'field' => 'capacity']);
             }
+            if ($event['min_helpers'] !== null && (!is_int($event['min_helpers']) || $event['min_helpers'] < 1 || $event['min_helpers'] > 100000)) {
+                respond(400, ['error' => 'invalid_minimum', 'field' => 'minimum']);
+            }
+            if ($event['min_helpers'] !== null && $event['capacity'] !== null && $event['min_helpers'] > $event['capacity']) {
+                respond(400, ['error' => 'minimum_above_capacity', 'field' => 'minimum']);
+            }
 
             $result = vt_transaction(function () use ($id, $event) {
                 if (vt_query('SELECT 1 FROM vt_locations WHERE id = ?', [$event['location_id']])->fetchColumn() === false) {
                     return ['error' => 'unknown_location', 'field' => 'locationId'];
                 }
                 $values = [$event['name'], $event['location_id'], $event['starts_at'], $event['ends_at'],
-                    $event['capacity'], $event['info'], $event['url'], $event['responsible']];
+                    $event['capacity'], $event['info'], $event['url'], $event['responsible'], $event['min_helpers']];
                 if ($id === null) {
                     $id = vt_new_id();
                     vt_query(
-                        'INSERT INTO vt_events (name, location_id, starts_at, ends_at, capacity, info, url, responsible, id)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        'INSERT INTO vt_events (name, location_id, starts_at, ends_at, capacity, info, url, responsible, min_helpers, id)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                         array_merge($values, [$id])
                     );
                     return ['id' => $id];
@@ -674,7 +683,7 @@ try {
                 }
                 vt_query(
                     'UPDATE vt_events SET name = ?, location_id = ?, starts_at = ?, ends_at = ?, capacity = ?, info = ?, url = ?,
-                     responsible = ? WHERE id = ?',
+                     responsible = ?, min_helpers = ? WHERE id = ?',
                     array_merge($values, [$id])
                 );
                 return ['id' => $id];

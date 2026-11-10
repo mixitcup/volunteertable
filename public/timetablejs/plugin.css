@@ -381,22 +381,37 @@
   background-color: #E84132;
 }
 
+/* Top line: name and, if known, the count ("5/15 · min 5") side by side.
+   The count takes the room it needs; a long name is shortened with "…". */
+.timetable .time-entry small {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.timetable .time-entry .time-entry-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.timetable .time-entry.has-count .time-entry-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* With a fill bar, the top line moves up to make room for it. */
 .timetable .time-entry.has-registration small {
   top: 4px;
   transform: none;
-  padding-right: 34px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .timetable .time-entry .registration-count {
-  position: absolute;
-  top: 4px;
-  right: 10px;
+  flex: none;
   font-size: 0.75rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .timetable .time-entry .registration-bar {
@@ -416,6 +431,36 @@
   border-radius: 3px;
   background-color: #fff;
   transition: 200ms width;
+}
+
+/* Mark on the bar where the minimum number of people is. */
+.timetable .time-entry .registration-bar-minimum {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+/* Enough people for the minimum: a lighter red, so events that still need
+   help stand out. (Full, past and your own events are styled further below.) */
+.timetable .time-entry.is-minimum-reached {
+  background-color: #F8B4AD;
+  border-color: #EE8D84;
+  color: #5E1A13;
+}
+
+.timetable .time-entry.is-minimum-reached:hover {
+  background-color: #F5A39B;
+}
+
+.timetable .time-entry.is-minimum-reached .registration-bar {
+  background-color: rgba(255, 255, 255, 0.55);
+}
+
+.timetable .time-entry.is-minimum-reached .registration-bar-fill {
+  background-color: #D1493C;
 }
 
 .timetable .time-entry.is-full {

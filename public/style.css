@@ -1248,3 +1248,86 @@ a:hover {
   margin: 0 0 10px;
   color: var(--muted);
 }
+
+/* Minimum number of people: mark on the fill bar and a hint next to the count. */
+.capacity-meter {
+  position: relative;
+}
+
+.capacity-meter-minimum {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+/* Once the minimum is reached, the bar turns the same lighter red as in the timetable. */
+.capacity-meter.is-minimum-reached .capacity-meter-fill {
+  background-color: #F5A39B;
+}
+
+.minimum-hint.is-missing {
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.minimum-hint.is-reached {
+  color: var(--muted);
+}
+
+.event-registration {
+  flex-wrap: wrap;
+}
+
+/* Legend below the timetable: the same colours as the event blocks. */
+.timetable-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.timetable-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-swatch {
+  flex: none;
+  width: 22px;
+  height: 14px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.legend-swatch.is-open {
+  background-color: #EC6A5E;
+  border-color: #DF2E1E;
+}
+
+.legend-swatch.is-minimum-reached {
+  background-color: #F8B4AD;
+  border-color: #EE8D84;
+}
+
+.legend-swatch.is-full {
+  background-color: #9E9E9E;
+  border-color: #757575;
+}
+
+.legend-swatch.is-mine {
+  background-color: #FFD54F;
+  border-color: #E0A800;
+}
+
+.legend-swatch.is-past {
+  background-color: #D6D6D6;
+  border-color: #B0B0B0;
+}

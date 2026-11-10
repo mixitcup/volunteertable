@@ -81,7 +81,8 @@
         "email": "hamid@example.org"
       }
     ],
-    "responsible": "Elif"
+    "responsible": "Elif",
+    "minimum": 3
   },
   {
     "name": "All-you-can-eat grill",
@@ -162,7 +163,8 @@
         "name": "Ben",
         "email": "ben@example.org"
       }
-    ]
+    ],
+    "minimum": 6
   },
   {
     "name": "Clean-up",
@@ -181,7 +183,8 @@
         "email": "anna@example.org"
       }
     ],
-    "responsible": "Jonas"
+    "responsible": "Jonas",
+    "minimum": 5
   },
   {
     "name": "Catering",
@@ -195,7 +198,8 @@
         "name": "Jonas",
         "email": "jonas@example.org"
       }
-    ]
+    ],
+    "minimum": 2
   },
   {
     "name": "Livestream support",
@@ -212,6 +216,7 @@
     "end": "2026-11-09T20:30:00",
     "info": "Help the jury collect the votes.",
     "capacity": 3,
-    "bookings": []
+    "bookings": [],
+    "minimum": 2
   }
 ]

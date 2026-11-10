@@ -59,6 +59,14 @@
 
     <section id="timetable-tab" class="tab-panel" role="tabpanel">
       <div class="timetable"></div>
+      <!-- Explains why events look different. -->
+      <ul class="timetable-legend" aria-label="What the colours mean">
+        <li><span class="legend-swatch is-open"></span>Help needed</li>
+        <li><span class="legend-swatch is-minimum-reached"></span>Minimum reached, places left</li>
+        <li><span class="legend-swatch is-full"></span>Full</li>
+        <li><span class="legend-swatch is-mine"></span>You’re registered</li>
+        <li><span class="legend-swatch is-past"></span>Over</li>
+      </ul>
     </section>
 
     <section id="locations-tab" class="tab-panel" role="tabpanel" hidden>
@@ -331,6 +339,7 @@
             url: '#' + getEventInfoId(event),
             registered: event.registered,
             capacity: event.capacity === null ? undefined : event.capacity,
+            minimum: event.minimum === null ? undefined : event.minimum,
             class: findMyBooking(event.id) ? 'is-mine' : undefined
           });
         });
@@ -418,8 +427,25 @@
         var ratio = Math.min(event.registered / event.capacity, 1);
         meter.firstChild.style.width = Math.round(ratio * 100) + '%';
         meter.classList.toggle('is-full', event.registered >= event.capacity);
+        if (event.minimum !== null && event.minimum < event.capacity) {
+          var mark = meter.appendChild(el('span', 'capacity-meter-minimum'));
+          mark.style.left = Math.round(event.minimum / event.capacity * 100) + '%';
+        }
+        meter.classList.toggle('is-minimum-reached', event.minimum !== null && event.registered >= event.minimum);
         meter.setAttribute('aria-hidden', 'true');
         return meter;
+      }
+
+      // "2 more needed" or "minimum reached ✓" for events with a minimum.
+      function minimumHint(event) {
+        if (event.minimum === null) {
+          return null;
+        }
+        var missing = event.minimum - event.registered;
+        return missing > 0 ?
+          el('span', 'minimum-hint is-missing', missing + (missing === 1 ? ' more person' : ' more people') +
+            ' needed (minimum ' + event.minimum + ')') :
+          el('span', 'minimum-hint is-reached', 'minimum of ' + event.minimum + ' reached ✓');
       }
 
       function renderEventCard(event, locationInfoIds) {
@@ -451,6 +477,11 @@
             (full ? ' (full)' : ', ' + (event.capacity - event.registered) + ' places left')));
         } else {
           registration.textContent = event.registered + ' registered';
+        }
+        var hint = minimumHint(event);
+        if (hint !== null) {
+          registration.appendChild(document.createTextNode(' · '));
+          registration.appendChild(hint);
         }
 
         if (event.attendees.length > 0 || admin !== null) {
@@ -899,6 +930,8 @@
         end_before_start: 'The end must be after the start.',
         invalid_capacity: 'Please enter a whole number of at least 1, or leave it empty for no limit.',
         invalid_title: 'Please enter a title of at most 120 characters, on one line.',
+        invalid_minimum: 'Please enter a whole number of at least 1, or leave it empty for no minimum.',
+        minimum_above_capacity: 'The minimum can’t be higher than the maximum number of people.',
         unknown_location: 'Please choose a location.',
         invalid_email: 'Please enter a valid email address.',
         already_booked: 'This email address is already registered for this event.',
@@ -1136,6 +1169,9 @@
             value: isNew ? local(start) : toInputDateTime(event.start) },
           { key: 'end', label: 'End', type: 'datetime-local', required: true,
             value: isNew ? local(new Date(start.getTime() + 3600000)) : toInputDateTime(event.end) },
+          { key: 'minimum', label: 'Minimum number of people needed', type: 'number',
+            value: isNew ? '' : event.minimum,
+            hint: 'Once reached, the event is shown in a lighter red. Leave empty for no minimum.' },
           { key: 'capacity', label: 'Maximum number of people', type: 'number',
             value: isNew ? '' : event.capacity, hint: 'Leave empty for no limit.' },
           { key: 'responsible', label: 'Responsible', value: isNew ? '' : event.responsible,
@@ -1144,6 +1180,7 @@
           { key: 'url', label: 'Website', type: 'url', value: isNew ? '' : event.url }
         ], function(values) {
           var capacity = values.capacity.trim();
+          var minimum = values.minimum.trim();
           return api('admin_save_event', {
             id: isNew ? null : event.id,
             name: values.name,
@@ -1152,6 +1189,7 @@
             end: values.end,
             // Non-numbers are sent as text so the server reports them as invalid.
             capacity: capacity === '' ? null : (/^\d+$/.test(capacity) ? Number(capacity) : capacity),
+            minimum: minimum === '' ? null : (/^\d+$/.test(minimum) ? Number(minimum) : minimum),
             info: values.info,
             url: values.url,
             responsible: values.responsible
@@ -1429,13 +1467,14 @@
             name: 'Events',
             columns: [
               { title: 'Event', width: 28 }, { title: 'Start', width: 17 }, { title: 'End', width: 17 },
-              { title: 'Location', width: 18 }, { title: 'Maximum', width: 10 }, { title: 'Registered', width: 11 },
+              { title: 'Location', width: 18 }, { title: 'Minimum', width: 10 }, { title: 'Maximum', width: 10 },
+              { title: 'Registered', width: 11 },
               { title: 'Places left', width: 11 }, { title: 'Responsible', width: 22 },
               { title: 'Who’s coming', width: 40 }, { title: 'Description', width: 40 }, { title: 'Website', width: 25 }
             ],
             rows: data.events.slice().sort(byStart).map(function(event) {
               return [event.name, parseLocal(event.start), parseLocal(event.end), event.location,
-                event.capacity, event.registered,
+                event.minimum, event.capacity, event.registered,
                 event.capacity === null ? null : Math.max(event.capacity - event.registered, 0),
                 event.responsible, event.attendees.join(', '), event.info, event.url];
             })
