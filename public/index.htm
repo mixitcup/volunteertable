@@ -1409,13 +1409,20 @@
           article.dataset.search = searchText.join(' ').toLowerCase();
         });
 
-        filter.addEventListener('input', function() {
+        function applyFilter() {
+          adminFilterText = filter.value;
           var query = filter.value.trim().toLowerCase();
           list.querySelectorAll('.admin-user').forEach(function(article) {
             article.hidden = query !== '' && article.dataset.search.indexOf(query) === -1;
           });
-        });
+        }
+        filter.addEventListener('input', applyFilter);
+        // Keep the filter when the list is redrawn (e.g. after an update from the server).
+        filter.value = adminFilterText;
+        applyFilter();
       }
+
+      var adminFilterText = '';
 
       // Opens an admin login link (index.htm?admin=TOKEN).
       function openAdminLink() {
@@ -1504,6 +1511,7 @@
           adminExists = my.data.adminExists;
           admin = my.data.admin;
           inviteLink = my.data.inviteLink;
+          dataVersion = my.data.version;
           page = my.data.page;
           renderPageTexts();
           if (!hasAccess) {
@@ -1576,6 +1584,45 @@
           return null;
         });
       }
+
+      /* ------------------------------------------------------------------
+       * Live updates: show changes made in other browsers
+       * ------------------------------------------------------------------ */
+
+      var UPDATE_CHECK_INTERVAL = 15 * 1000;
+      var dataVersion = null;
+      var checkingForUpdates = false;
+
+      // While someone is typing or has a form open, an update would throw away
+      // their input, so it waits until they're done.
+      function isUserBusy() {
+        var active = document.activeElement;
+        return openFormEventId !== null ||
+          editingBookingId !== null ||
+          document.getElementById('editor').open ||
+          (active !== null && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) && !active.readOnly);
+      }
+
+      function checkForUpdates() {
+        if (dataVersion === null || checkingForUpdates || document.hidden || isUserBusy()) {
+          return;
+        }
+        checkingForUpdates = true;
+        api('version').then(function(result) {
+          if (result.ok && result.data.version !== dataVersion && !isUserBusy()) {
+            return reload();
+          }
+        }).catch(function() {
+          // Offline or a server hiccup: try again at the next check.
+        }).then(function() {
+          checkingForUpdates = false;
+        });
+      }
+
+      setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
+      // Coming back to the tab (or the window): check right away instead of waiting.
+      document.addEventListener('visibilitychange', checkForUpdates);
+      window.addEventListener('focus', checkForUpdates);
 
       initAdminSetupForm();
 

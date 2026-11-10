@@ -392,6 +392,33 @@ function vt_session_admin(?string $session): ?array
 }
 
 /* ---------------------------------------------------------------------------
+ * Data version: changes whenever shared data changes, so open pages can see
+ * cheaply whether they need to reload.
+ * ------------------------------------------------------------------------- */
+
+function vt_data_version(): string
+{
+    $version = vt_query("SELECT value FROM vt_settings WHERE name = 'data_version'")->fetchColumn();
+    return $version === false ? '' : (string) $version;
+}
+
+/** Marks the shared data as changed. A random value avoids races between simultaneous changes. */
+function vt_bump_data_version(): void
+{
+    $version = vt_new_id();
+    $updated = vt_query("UPDATE vt_settings SET value = ? WHERE name = 'data_version'", [$version])->rowCount();
+    if ($updated > 0) {
+        return;
+    }
+    try {
+        vt_query("INSERT INTO vt_settings (name, value) VALUES ('data_version', ?)", [$version]);
+    } catch (PDOException $e) {
+        // Created at the same moment by another request.
+        vt_query("UPDATE vt_settings SET value = ? WHERE name = 'data_version'", [$version]);
+    }
+}
+
+/* ---------------------------------------------------------------------------
  * Page texts the admin can edit
  * ------------------------------------------------------------------------- */
 

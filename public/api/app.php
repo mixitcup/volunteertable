@@ -10,6 +10,7 @@ declare(strict_types=1);
  *
  *   POST app.php?action=join    { token }            -> { ok } | 404 invalid_link  (invitation link)
  *   GET  app.php?action=events  -> { locations: [...], events: [...] }  (with attendee names) [access]
+ *   GET  app.php?action=version -> { version }  changes whenever shared data changes (polled by open pages)
  *   GET  app.php?action=my      -> { access, bookings: [...], adminExists, admin: {name, email} | null,
  *                                    inviteLink (admins only), page: { title, intro } }
  *                                  bookings belonging to this browser, and whether an admin is logged in
@@ -49,8 +50,23 @@ require $privateDir . '/lib.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
+// Actions that change data other browsers show. When one succeeds, the data
+// version changes, so open pages reload (see "version").
+const CHANGING_ACTIONS = [
+    'book', 'update', 'cancel', 'claim_admin', 'admin_remove', 'admin_remove_user',
+    'admin_save_location', 'admin_delete_location', 'admin_save_event', 'admin_delete_event', 'admin_save_page',
+];
+
 function respond(int $status, array $body): void
 {
+    if ($status < 300 && in_array($GLOBALS['action'] ?? '', CHANGING_ACTIONS, true)) {
+        try {
+            vt_bump_data_version();
+        } catch (Throwable $e) {
+            // The change itself succeeded; other pages just notice it later.
+            error_log('[volunteertable] Could not update the data version: ' . $e->getMessage());
+        }
+    }
     http_response_code($status);
     echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
@@ -241,12 +257,15 @@ try {
             respond(200, list_events());
         }
         if ($action === 'my') {
+            // Read before any data: if data changes while the page loads, the next check reloads it.
+            $version = vt_data_version();
             $session = vt_session(false);
             $access = vt_has_access($session);
             $admin = vt_session_admin($session);
             respond(200, [
                 'access' => $access,
                 'bookings' => $access ? array_map('public_booking', vt_session_bookings($session)) : [],
+                'version' => $version,
                 'adminExists' => vt_admin_exists(),
                 'admin' => public_admin($admin),
                 // Shown to everyone, also before opening the invitation link.
@@ -254,6 +273,10 @@ try {
                 // Only admins get the shared invitation link to pass on.
                 'inviteLink' => $admin !== null ? vt_invite_link() : null,
             ]);
+        }
+        if ($action === 'version') {
+            // Polled by open pages; reveals nothing but a random value.
+            respond(200, ['version' => vt_data_version()]);
         }
         if ($action === 'admin_users') {
             require_admin();
