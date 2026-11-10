@@ -11,7 +11,7 @@ declare(strict_types=1);
  *   POST app.php?action=join    { token }            -> { ok } | 404 invalid_link  (invitation link)
  *   GET  app.php?action=events  -> { locations: [...], events: [...] }  (with attendee names) [access]
  *   GET  app.php?action=my      -> { access, bookings: [...], adminExists, admin: {name, email} | null,
- *                                    inviteLink (admins only) }
+ *                                    inviteLink (admins only), page: { title, intro } }
  *                                  bookings belonging to this browser, and whether an admin is logged in
  *   POST app.php?action=book    { eventId, name, email } -> { booking, editLink, mailSent } [access]
  *                                 | 409 already_booked | 409 event_full | 404 unknown_event
@@ -33,6 +33,7 @@ declare(strict_types=1);
  *   POST app.php?action=admin_save_event { id?, name, locationId, start, end, capacity, info, url } -> { id }
  *                                      start/end as "YYYY-MM-DDTHH:MM"; capacity null = unlimited
  *   POST app.php?action=admin_delete_event { id }    -> { removedRegistrations }
+ *   POST app.php?action=admin_save_page { title, intro } -> { page }  page title and introductory text
  *
  * POST bodies must be JSON, which also protects against cross-site form posts.
  * Email addresses are only returned for this browser's own bookings and to admins.
@@ -248,6 +249,8 @@ try {
                 'bookings' => $access ? array_map('public_booking', vt_session_bookings($session)) : [],
                 'adminExists' => vt_admin_exists(),
                 'admin' => public_admin($admin),
+                // Shown to everyone, also before opening the invitation link.
+                'page' => vt_page_texts(),
                 // Only admins get the shared invitation link to pass on.
                 'inviteLink' => $admin !== null ? vt_invite_link() : null,
             ]);
@@ -579,6 +582,19 @@ try {
                 respond($result['error'] === 'unknown_event' ? 404 : 409, $result);
             }
             respond($id === null ? 201 : 200, $result);
+
+        case 'admin_save_page':
+            require_admin();
+            $title = input_text($input, 'title', 1000);
+            // One line (no line breaks or control characters) of at most 120 characters.
+            if ($title === null || preg_match('/\p{C}/u', $title) === 1 || preg_match_all('/./us', $title) > 120) {
+                respond(400, ['error' => 'invalid_title', 'field' => 'title']);
+            }
+            $intro = input_text($input, 'intro', 5000);
+            vt_save_text('page_title', $title);
+            // An empty intro is allowed (and shows no intro), so it is stored as "".
+            vt_save_text('page_intro', $intro ?? '');
+            respond(200, ['page' => vt_page_texts()]);
 
         case 'admin_delete_event':
             require_admin();

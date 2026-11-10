@@ -648,3 +648,13 @@ body.no-access .tab-panel {
 .access-gate[hidden] {
   display: none;
 }
+
+/* Line breaks in the admin's introduction text are kept. */
+#page-intro {
+  white-space: pre-line;
+}
+
+.hero-unit[hidden],
+#page-intro[hidden] {
+  display: none;
+}

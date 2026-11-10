@@ -99,6 +99,12 @@ function vt_schema_statements(string $driver): array
         'CREATE TABLE IF NOT EXISTS vt_session_access (
             session_hash CHAR(64) NOT NULL PRIMARY KEY REFERENCES vt_sessions (id_hash)
         )' . $options,
+
+        // Texts the admin can edit, e.g. "page_title" and "page_intro".
+        'CREATE TABLE IF NOT EXISTS vt_texts (
+            name VARCHAR(64) NOT NULL PRIMARY KEY,
+            value TEXT NOT NULL
+        )' . $options,
     ];
 }
 
@@ -107,7 +113,7 @@ function vt_ensure_schema(PDO $db): void
     // Checks the most recently added table; all statements are "IF NOT EXISTS",
     // so databases created by an older version just get the missing tables.
     try {
-        $db->query('SELECT 1 FROM vt_session_access WHERE 1 = 0');
+        $db->query('SELECT 1 FROM vt_texts WHERE 1 = 0');
         return;
     } catch (PDOException $e) {
         // Tables missing: create them below.

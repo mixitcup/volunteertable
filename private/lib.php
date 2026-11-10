@@ -311,6 +311,36 @@ function vt_session_admin(?string $session): ?array
 }
 
 /* ---------------------------------------------------------------------------
+ * Page texts the admin can edit
+ * ------------------------------------------------------------------------- */
+
+const VT_PAGE_TEXT_DEFAULTS = [
+    'page_title' => 'VolunteerTable',
+    'page_intro' => "Thank you for volunteering! This event only works because of people like you.\n"
+        . 'Have a look at the timetable and pick the shifts you would like to help with.',
+];
+
+/** Title and intro text of the page, falling back to the defaults. */
+function vt_page_texts(): array
+{
+    $texts = VT_PAGE_TEXT_DEFAULTS;
+    foreach (vt_query('SELECT name, value FROM vt_texts')->fetchAll() as $row) {
+        if (array_key_exists($row['name'], $texts)) {
+            $texts[$row['name']] = $row['value'];
+        }
+    }
+    return ['title' => $texts['page_title'], 'intro' => $texts['page_intro']];
+}
+
+function vt_save_text(string $name, string $value): void
+{
+    vt_transaction(function () use ($name, $value) {
+        vt_query('DELETE FROM vt_texts WHERE name = ?', [$name]);
+        vt_query('INSERT INTO vt_texts (name, value) VALUES (?, ?)', [$name, $value]);
+    });
+}
+
+/* ---------------------------------------------------------------------------
  * Access: only invited browsers may see and use the page.
  * ------------------------------------------------------------------------- */
 
