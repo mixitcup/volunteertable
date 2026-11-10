@@ -27,6 +27,8 @@ declare(strict_types=1);
  *                                      only works while there is no admin yet (no invitation needed)
  *   POST app.php?action=admin_login  { token }       -> { admin } | 404 invalid_link
  *   GET  app.php?action=admin_users                  -> { users: [{ email, names, bookings }] }
+ *   POST app.php?action=admin_add_booking { eventId, name, email, sendMail?, overbook? } -> { booking, mailSent }
+ *                                      | 409 already_booked | 409 event_full (unless overbook)
  *   POST app.php?action=admin_remove { bookingId }   -> { ok }
  *   POST app.php?action=admin_remove_user { email }  -> { removed }  all registrations of that address
  *   POST app.php?action=admin_save_location { id?, name, url, info }  -> { id }  creates without id
@@ -54,7 +56,7 @@ header('Cache-Control: no-store');
 // Actions that change data other browsers show. When one succeeds, the data
 // version changes, so open pages reload (see "version").
 const CHANGING_ACTIONS = [
-    'book', 'update', 'cancel', 'claim_admin', 'admin_remove', 'admin_remove_user',
+    'book', 'update', 'cancel', 'claim_admin', 'admin_add_booking', 'admin_remove', 'admin_remove_user',
     'admin_save_location', 'admin_delete_location', 'admin_save_event', 'admin_delete_event', 'admin_save_page',
 ];
 
@@ -254,6 +256,62 @@ function input_datetime(array $input, string $key): string
     return $date->format('Y-m-d\TH:i:s');
 }
 
+/**
+ * Registers someone for an event. Responds with 404 unknown_event,
+ * 409 already_booked or 409 event_full (unless $allowFull) on failure.
+ * Returns ['booking', 'event', 'editToken', 'mailToken'].
+ */
+function create_booking(string $eventId, string $name, string $email, bool $allowFull): array
+{
+    $editToken = vt_new_token();
+    $mailToken = vt_new_token();
+    $result = vt_transaction(function () use ($eventId, $name, $email, $editToken, $mailToken, $allowFull) {
+        $event = find_event($eventId, true);
+        if ($event === null) {
+            return ['error' => 'unknown_event'];
+        }
+        $emailKey = vt_email_key($email);
+        $existing = vt_query('SELECT 1 FROM vt_bookings WHERE event_id = ? AND email_key = ?', [$eventId, $emailKey])->fetchColumn();
+        if ($existing !== false) {
+            return ['error' => 'already_booked', 'field' => 'email'];
+        }
+        $count = (int) vt_query('SELECT COUNT(*) FROM vt_bookings WHERE event_id = ?', [$eventId])->fetchColumn();
+        if (!$allowFull && $event['capacity'] !== null && $count >= (int) $event['capacity']) {
+            return ['error' => 'event_full', 'registered' => $count, 'capacity' => (int) $event['capacity']];
+        }
+
+        $booking = [
+            'id' => vt_new_id(),
+            'event_id' => $eventId,
+            'name' => $name,
+            'email' => $email,
+        ];
+        vt_query(
+            'INSERT INTO vt_bookings (id, event_id, name, email, email_key, edit_token_hash, mail_token_hash, created_at, last_mail_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$booking['id'], $eventId, $name, $email, $emailKey, vt_hash_token($editToken), vt_hash_token($mailToken), time(), time()]
+        );
+        return ['booking' => $booking, 'event' => $event];
+    });
+
+    if (isset($result['error'])) {
+        respond($result['error'] === 'unknown_event' ? 404 : 409, $result);
+    }
+    return $result + ['editToken' => $editToken, 'mailToken' => $mailToken];
+}
+
+/** Sends the confirmation with the edit link; returns whether that worked. */
+function send_booking_mail(array $created): bool
+{
+    try {
+        vt_send_booking_mail($created['booking'], $created['event'], $created['mailToken']);
+        return true;
+    } catch (Throwable $e) {
+        error_log('[volunteertable] Could not send booking mail: ' . $e->getMessage());
+        return false;
+    }
+}
+
 function require_own_booking(array $input): string
 {
     $bookingId = $input['bookingId'] ?? null;
@@ -334,56 +392,38 @@ try {
                 respond(400, ['error' => 'invalid_email']);
             }
 
-            $editToken = vt_new_token();
-            $mailToken = vt_new_token();
-            $result = vt_transaction(function () use ($eventId, $name, $email, $editToken, $mailToken) {
-                $event = find_event($eventId, true);
-                if ($event === null) {
-                    return ['error' => 'unknown_event'];
-                }
-                $emailKey = vt_email_key($email);
-                $existing = vt_query('SELECT 1 FROM vt_bookings WHERE event_id = ? AND email_key = ?', [$eventId, $emailKey])->fetchColumn();
-                if ($existing !== false) {
-                    return ['error' => 'already_booked'];
-                }
-                $count = (int) vt_query('SELECT COUNT(*) FROM vt_bookings WHERE event_id = ?', [$eventId])->fetchColumn();
-                if ($event['capacity'] !== null && $count >= (int) $event['capacity']) {
-                    return ['error' => 'event_full'];
-                }
-
-                $booking = [
-                    'id' => vt_new_id(),
-                    'event_id' => $eventId,
-                    'name' => $name,
-                    'email' => $email,
-                ];
-                vt_query(
-                    'INSERT INTO vt_bookings (id, event_id, name, email, email_key, edit_token_hash, mail_token_hash, created_at, last_mail_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$booking['id'], $eventId, $name, $email, $emailKey, vt_hash_token($editToken), vt_hash_token($mailToken), time(), time()]
-                );
-                return ['booking' => $booking, 'event' => $event];
-            });
-
-            if (isset($result['error'])) {
-                respond($result['error'] === 'unknown_event' ? 404 : 409, ['error' => $result['error']]);
-            }
+            $result = create_booking($eventId, $name, $email, false);
 
             // Only this booking is linked to the browser, not the email address:
             // nobody has proven yet that they can read mail sent to it.
             vt_insert_link('vt_session_bookings', ['session_hash' => vt_session(true), 'booking_id' => $result['booking']['id']]);
 
-            $mailSent = true;
-            try {
-                vt_send_booking_mail($result['booking'], $result['event'], $mailToken);
-            } catch (Throwable $e) {
-                error_log('[volunteertable] Could not send booking mail: ' . $e->getMessage());
-                $mailSent = false;
-            }
             respond(201, [
                 'booking' => public_booking($result['booking']),
-                'editLink' => vt_edit_link($editToken, false),
-                'mailSent' => $mailSent,
+                'editLink' => vt_edit_link($result['editToken'], false),
+                'mailSent' => send_booking_mail($result),
+            ]);
+
+        case 'admin_add_booking':
+            require_admin();
+            $eventId = is_string($input['eventId'] ?? null) ? $input['eventId'] : '';
+            $name = vt_normalize_name($input['name'] ?? null);
+            $email = vt_normalize_email($input['email'] ?? null);
+            if ($name === null) {
+                respond(400, ['error' => 'invalid_name', 'field' => 'name']);
+            }
+            if ($email === null) {
+                respond(400, ['error' => 'invalid_email', 'field' => 'email']);
+            }
+
+            // Admins may add people to a full event once they confirmed it.
+            $result = create_booking($eventId, $name, $email, ($input['overbook'] ?? false) === true);
+            // Not linked to the admin's browser: it's the other person's registration.
+            // With the mail, they can view, change or cancel it themselves.
+            $sendMail = ($input['sendMail'] ?? true) !== false;
+            respond(201, [
+                'booking' => public_booking($result['booking']),
+                'mailSent' => $sendMail ? send_booking_mail($result) : false,
             ]);
 
         case 'open':
@@ -604,13 +644,16 @@ try {
                     );
                     return ['id' => $id];
                 }
-                if (!is_string($id) || find_event($id, true) === null) {
+                $current = is_string($id) ? find_event($id, true) : null;
+                if ($current === null) {
                     return ['error' => 'unknown_event'];
                 }
                 // Lowering the capacity below the number of registrations would make
-                // "places left" negative; people have to be removed first.
+                // "places left" negative; people have to be removed first. Keeping it
+                // is fine, e.g. after an admin knowingly added someone to a full event.
                 $registered = (int) vt_query('SELECT COUNT(*) FROM vt_bookings WHERE event_id = ?', [$id])->fetchColumn();
-                if ($event['capacity'] !== null && $event['capacity'] < $registered) {
+                $lowered = $current['capacity'] === null || $event['capacity'] < (int) $current['capacity'];
+                if ($event['capacity'] !== null && $event['capacity'] < $registered && $lowered) {
                     return ['error' => 'capacity_below_registrations', 'field' => 'capacity', 'registered' => $registered];
                 }
                 vt_query(

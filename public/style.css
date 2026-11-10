@@ -1185,3 +1185,46 @@ a:hover {
 .event-responsible-label {
   color: var(--muted);
 }
+
+/* Admins: "+ Add person" at the end of the "Who's coming" list */
+.event-attendees li.add-person-item {
+  padding: 0;
+  background: none;
+}
+
+.add-person-button {
+  padding: 2px 10px;
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  background: none;
+  color: var(--accent-dark);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-person-button:hover,
+.add-person-button:focus-visible {
+  background-color: var(--accent-soft);
+}
+
+/* Checkboxes in the edit dialog: box before the text, not full width. */
+.editor-dialog label.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: normal;
+}
+
+.editor-dialog label.checkbox-label input {
+  display: inline-block;
+  width: auto;
+  margin: 3px 0 0;
+  flex: none;
+}
+
+.editor-dialog input[readonly] {
+  background-color: #F4F4F4;
+  color: var(--muted);
+}

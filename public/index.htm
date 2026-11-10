@@ -452,10 +452,10 @@
           registration.textContent = event.registered + ' registered';
         }
 
-        if (event.attendees.length > 0) {
+        if (event.attendees.length > 0 || admin !== null) {
           var attendees = article.appendChild(el('ul', 'event-attendees', el('li', 'attendees-label', 'Who’s coming:')));
           if (admin !== null) {
-            // Admins see who is behind each name and can remove people.
+            // Admins see who is behind each name, can remove people and add people.
             getAdminBookings(event.id).forEach(function(booking) {
               var chip = attendees.appendChild(el('li', 'is-removable', booking.name,
                 button('×', 'remove-chip-button', function() {
@@ -464,6 +464,9 @@
               chip.title = booking.email;
               chip.lastChild.setAttribute('aria-label', 'Remove ' + booking.name + ' from this event');
             });
+            attendees.appendChild(el('li', 'add-person-item', button('+ Add person', 'add-person-button', function() {
+              openAddPersonDialog(event);
+            })));
           } else {
             event.attendees.forEach(function(name) {
               attendees.appendChild(el('li', null, name));
@@ -847,8 +850,78 @@
         end_before_start: 'The end must be after the start.',
         invalid_capacity: 'Please enter a whole number of at least 1, or leave it empty for no limit.',
         invalid_title: 'Please enter a title of at most 120 characters, on one line.',
-        unknown_location: 'Please choose a location.'
+        unknown_location: 'Please choose a location.',
+        invalid_email: 'Please enter a valid email address.',
+        already_booked: 'This email address is already registered for this event.',
+        event_full: 'This event is full.',
+        unknown_event: 'This event no longer exists.'
       };
+
+      /*
+       * Admins add someone to an event: either a person who registered before
+       * (picked from the list, which fills in name and email) or a new person.
+       */
+      function openAddPersonDialog(event) {
+        var alreadyIn = {};
+        getAdminBookings(event.id).forEach(function(booking) {
+          alreadyIn[booking.email.toLowerCase()] = true;
+        });
+        // People who registered for anything, except those already in this event.
+        var people = adminUsers
+          .filter(function(user) { return !alreadyIn[user.email.toLowerCase()]; })
+          .map(function(user) { return { email: user.email, name: user.names[0] }; })
+          .sort(function(a, b) { return a.name.localeCompare(b.name) || a.email.localeCompare(b.email); });
+
+        var editor = openEditor('Add a person to “' + event.name + '”', [
+          {
+            key: 'person', label: 'Person', type: 'select', required: true, value: '',
+            options: [{ value: '', label: 'New person…' }].concat(people.map(function(person) {
+              return { value: person.email, label: person.name + ' (' + person.email + ')' };
+            })),
+            hint: people.length > 0 ? 'Choose someone who registered before, or enter a new person below.' : null
+          },
+          { key: 'name', label: 'Name', required: true, value: '' },
+          { key: 'email', label: 'Email address', type: 'email', required: true, value: '' },
+          { key: 'sendMail', label: 'Send them a confirmation email with a link to view or cancel the registration',
+            type: 'checkbox', value: true }
+        ], function(values) {
+          var request = {
+            eventId: event.id,
+            name: values.name,
+            email: values.email,
+            sendMail: values.sendMail,
+            overbook: false
+          };
+          return api('admin_add_booking', request).then(function(result) {
+            // A full event: the admin decides whether to add the person anyway.
+            if (!result.ok && result.data.error === 'event_full' && window.confirm(
+                '“' + event.name + '” is full (' + result.data.registered + ' of ' + result.data.capacity +
+                ' places taken). Add ' + values.name + ' anyway?')) {
+              request.overbook = true;
+              return api('admin_add_booking', request);
+            }
+            return result;
+          }).then(function(result) {
+            if (result.ok) {
+              var mailFailed = values.sendMail && !result.data.mailSent;
+              showNotice(values.name + ' has been added to “' + event.name + '”' + (values.sendMail ?
+                (mailFailed ? ', but the confirmation email could not be sent.' : ' and got a confirmation email.') :
+                '.'), mailFailed);
+            }
+            return result;
+          });
+        });
+
+        // Picking someone fills in their name and email (the name can still be changed).
+        var inputs = editor.inputs;
+        inputs.person.addEventListener('change', function() {
+          var person = people.filter(function(p) { return p.email === inputs.person.value; })[0];
+          inputs.name.value = person ? person.name : '';
+          inputs.email.value = person ? person.email : '';
+          inputs.email.readOnly = Boolean(person);
+          inputs.name.focus();
+        });
+      }
 
       /*
        * Opens the editor dialog. fields: [{ key, label, type, value, options, required, hint }],
@@ -889,7 +962,14 @@
             input.step = 1;
           }
           inputs[field.key] = input;
-          var label = el('label', null, field.label + (field.required ? '' : ' (optional)'), input);
+          var label;
+          if (field.type === 'checkbox') {
+            // Checkbox before its text, without "(optional)".
+            input.checked = Boolean(field.value);
+            label = el('label', 'checkbox-label', input, ' ' + field.label);
+          } else {
+            label = el('label', null, field.label + (field.required ? '' : ' (optional)'), input);
+          }
           if (field.hint) {
             label.appendChild(el('span', 'field-hint', field.hint));
           }
@@ -917,7 +997,7 @@
           e.preventDefault();
           var values = {};
           Object.keys(inputs).forEach(function(key) {
-            values[key] = inputs[key].value;
+            values[key] = inputs[key].type === 'checkbox' ? inputs[key].checked : inputs[key].value;
           });
           saveButton.disabled = true;
           save(values).then(function(result) {
@@ -949,7 +1029,7 @@
         if (first) {
           first.focus();
         }
-        return { close: function() { dialog.close(); }, showError: showError };
+        return { close: function() { dialog.close(); }, showError: showError, inputs: inputs };
       }
 
       // "2026-11-09T09:30:00" -> "2026-11-09T09:30", the format of datetime-local inputs.
