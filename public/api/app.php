@@ -38,7 +38,12 @@ declare(strict_types=1);
  * Email addresses are only returned for this browser's own bookings and to admins.
  */
 
-require __DIR__ . '/../private/lib.php';
+// The private folder (code, config, database) lives next to public/, outside the
+// web root. __DIR__ has symlinks resolved, so this also works when public/ is
+// symlinked into the web server's folder. If public/ is copied instead, set the
+// environment variable VOLUNTEERTABLE_PRIVATE_DIR to the private folder.
+$privateDir = getenv('VOLUNTEERTABLE_PRIVATE_DIR') ?: __DIR__ . '/../../private';
+require $privateDir . '/lib.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
