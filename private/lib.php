@@ -360,6 +360,28 @@ function vt_session_owns_booking(?string $session, string $bookingId): bool
     return false;
 }
 
+/* Links for email addresses (see vt_email_links in schema.php) ---------------- */
+
+/** Creates a new emailed link for the address and returns its token. Earlier links keep working. */
+function vt_create_email_link(string $emailKey): string
+{
+    $token = vt_new_token();
+    vt_query('INSERT INTO vt_email_links (token_hash, email_key, created_at) VALUES (?, ?, ?)',
+        [vt_hash_token($token), $emailKey, time()]);
+    return $token;
+}
+
+function vt_forget_email_link(string $token): void
+{
+    vt_query('DELETE FROM vt_email_links WHERE token_hash = ?', [vt_hash_token($token)]);
+}
+
+/** Whether a link has ever been emailed to this address. */
+function vt_email_has_link(string $emailKey): bool
+{
+    return vt_query('SELECT 1 FROM vt_email_links WHERE email_key = ?', [$emailKey])->fetchColumn() !== false;
+}
+
 function vt_delete_booking(string $bookingId): void
 {
     vt_transaction(function () use ($bookingId) {
@@ -711,7 +733,8 @@ function vt_send_booking_mail(array $booking, array $event, string $mailToken, s
         . ($registeredBy === 'self' ? '' : $text('booking.notIntended') . "\n\n")
         . $text('booking.linkIntro') . "\n\n"
         . "{$link}\n\n"
-        . $text('booking.linkInfo') . "\n";
+        . $text('booking.linkInfo') . "\n"
+        . ($registeredBy === 'self' ? "\n" . $text('booking.noFurtherMails') . "\n" : '');
 
     vt_send_mail($booking['email'], $booking['name'], $subject, $body);
 }

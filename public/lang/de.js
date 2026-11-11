@@ -108,6 +108,7 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'confirmation.text': 'Mit diesem Link kannst du deine Anmeldung später ändern oder absagen, auch auf einem anderen Gerät:',
   'confirmation.mailSent': 'Wir haben den Link auch an {email} geschickt.',
   'confirmation.mailFailed': 'Wir konnten den Link nicht per E-Mail schicken, bitte speichere ihn jetzt.',
+  'confirmation.mailSkipped': 'Diesmal keine neue E-Mail: Der Link in der E-Mail, die wir bei deiner ersten Anmeldung an {email} geschickt haben, zeigt schon alle deine Anmeldungen, auch diese.',
 
   // Meine Schichten
   'myEvents.none': 'Du hast dich in diesem Browser noch für keine Veranstaltung angemeldet.',

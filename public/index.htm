@@ -681,6 +681,8 @@
                 confirmations[event.id] = {
                   editLink: result.data.editLink,
                   mailSent: result.data.mailSent,
+                  // Not the first registration with this address: no new mail on purpose.
+                  mailSkipped: result.data.mailSkipped === true,
                   email: email
                 };
                 return reload();
@@ -748,9 +750,11 @@
         return el('div', 'booking-confirmation',
           el('p', null, el('strong', null, t('confirmation.thanks')), ' ' + t('confirmation.text')),
           el('div', 'edit-link-row', input, copy),
-          el('p', 'hint', confirmation.mailSent ?
-            t('confirmation.mailSent', { email: confirmation.email }) :
-            t('confirmation.mailFailed')));
+          el('p', 'hint', confirmation.mailSkipped ?
+            t('confirmation.mailSkipped', { email: confirmation.email }) :
+            confirmation.mailSent ?
+              t('confirmation.mailSent', { email: confirmation.email }) :
+              t('confirmation.mailFailed')));
       }
 
       /* ------------------------------------------------------------------

@@ -14,7 +14,10 @@ declare(strict_types=1);
  *   GET  app.php?action=my      -> { access, bookings: [...], adminExists, admin: {name, email} | null,
  *                                    inviteLink (admins only), page: { title, intro } }
  *                                  bookings belonging to this browser, and whether an admin is logged in
- *   POST app.php?action=book    { eventId, name, email, forSomeoneElse? } -> { booking, editLink, mailSent } [access]
+ *   POST app.php?action=book    { eventId, name, email, forSomeoneElse?, lang? }
+ *                                 -> { booking, editLink, mailSent, mailSkipped } [access]
+ *                                 registering yourself mails only the first time an address is used
+ *                                 (mailSkipped: an earlier mail's link already shows all registrations)
  *                                 forSomeoneElse: registers another person; not linked to this browser,
  *                                 no editLink returned, the person always gets the confirmation mail
  *                                 | 409 already_booked | 409 event_full | 404 unknown_event
@@ -293,7 +296,8 @@ function create_booking(string $eventId, string $name, string $email, bool $allo
         vt_query(
             'INSERT INTO vt_bookings (id, event_id, name, email, email_key, edit_token_hash, mail_token_hash, created_at, last_mail_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [$booking['id'], $eventId, $name, $email, $emailKey, vt_hash_token($editToken), vt_hash_token($mailToken), time(), time()]
+            // last_mail_at is set once a mail was actually sent (see send_booking_mail()).
+            [$booking['id'], $eventId, $name, $email, $emailKey, vt_hash_token($editToken), vt_hash_token($mailToken), time(), null]
         );
         return ['booking' => $booking, 'event' => $event];
     });
@@ -310,11 +314,17 @@ function create_booking(string $eventId, string $name, string $email, bool $allo
  */
 function send_booking_mail(array $created, string $registeredBy, string $lang): bool
 {
+    // The link in the mail belongs to the email address: it shows all its registrations.
+    $token = vt_create_email_link(vt_email_key($created['booking']['email']));
     try {
-        vt_send_booking_mail($created['booking'], $created['event'], $created['mailToken'], $registeredBy, $lang);
+        vt_send_booking_mail($created['booking'], $created['event'], $token, $registeredBy, $lang);
+        // "Send me the edit link again" waits a few minutes after a mail (against mail flooding).
+        vt_query('UPDATE vt_bookings SET last_mail_at = ? WHERE id = ?', [time(), $created['booking']['id']]);
         return true;
     } catch (Throwable $e) {
         error_log('[volunteertable] Could not send booking mail: ' . $e->getMessage());
+        // Not sent: forget the link, so the address still counts as never mailed.
+        vt_forget_email_link($token);
         return false;
     }
 }
@@ -400,6 +410,8 @@ try {
             }
 
             $forSomeoneElse = ($input['forSomeoneElse'] ?? false) === true;
+            // Checked before registering: has this address ever been sent its link?
+            $firstForAddress = !vt_email_has_link(vt_email_key($email));
             $result = create_booking($eventId, $name, $email, false);
 
             if ($forSomeoneElse) {
@@ -416,10 +428,14 @@ try {
             // nobody has proven yet that they can read mail sent to it.
             vt_insert_link('vt_session_bookings', ['session_hash' => vt_session(true), 'booking_id' => $result['booking']['id']]);
 
+            // Only the first registration with an address sends a mail: its link shows
+            // all registrations of that address, including later ones. Registrations by
+            // someone else or by an admin (above/below) always send one.
             respond(201, [
                 'booking' => public_booking($result['booking']),
                 'editLink' => vt_edit_link($result['editToken'], false),
-                'mailSent' => send_booking_mail($result, 'self', vt_mail_language($input['lang'] ?? null)),
+                'mailSent' => $firstForAddress && send_booking_mail($result, 'self', vt_mail_language($input['lang'] ?? null)),
+                'mailSkipped' => !$firstForAddress,
             ]);
 
         case 'admin_add_booking':
@@ -450,6 +466,23 @@ try {
                 respond(404, ['error' => 'invalid_link']);
             }
             $hash = vt_hash_token($token);
+
+            // A link from a mail: all registrations of that address show up in this browser.
+            $emailKey = vt_query('SELECT email_key FROM vt_email_links WHERE token_hash = ?', [$hash])->fetchColumn();
+            if ($emailKey !== false) {
+                $session = vt_grant_access();
+                vt_insert_link('vt_session_emails', ['session_hash' => $session, 'email_key' => $emailKey]);
+                // The next upcoming registration (or the latest one), to show it on the page.
+                $first = vt_query(
+                    'SELECT b.id FROM vt_bookings b JOIN vt_events e ON e.id = b.event_id WHERE b.email_key = ?
+                     ORDER BY CASE WHEN e.ends_at >= ? THEN 0 ELSE 1 END, e.starts_at',
+                    [$emailKey, date('Y-m-d\TH:i:s')]
+                )->fetchColumn();
+                respond(200, ['bookingId' => $first === false ? null : $first, 'emailLinked' => true]);
+            }
+
+            // The edit link shown on the page after registering (only that registration),
+            // or a link from a mail sent by an older version (per registration).
             $booking = vt_query(
                 'SELECT id, email_key, mail_token_hash FROM vt_bookings WHERE edit_token_hash = ? OR mail_token_hash = ?',
                 [$hash, $hash]
@@ -563,6 +596,7 @@ try {
                 vt_query('DELETE FROM vt_bookings WHERE email_key = ?', [$emailKey]);
                 // Browsers linked to the address via an emailed link forget it as well.
                 vt_query('DELETE FROM vt_session_emails WHERE email_key = ?', [$emailKey]);
+                vt_query('DELETE FROM vt_email_links WHERE email_key = ?', [$emailKey]);
                 return count($bookingIds);
             });
             if ($removed === 0) {
@@ -734,8 +768,7 @@ try {
                 respond(400, ['error' => 'invalid_email']);
             }
 
-            $mailToken = vt_new_token();
-            $result = vt_transaction(function () use ($eventId, $email, $mailToken) {
+            $result = vt_transaction(function () use ($eventId, $email) {
                 $booking = vt_query(
                     'SELECT id, event_id, name, email, last_mail_at FROM vt_bookings WHERE event_id = ? AND email_key = ?' . vt_for_update(),
                     [$eventId, vt_email_key($email)]
@@ -743,21 +776,15 @@ try {
                 if ($booking === false || (int) $booking['last_mail_at'] + VT_RESEND_INTERVAL > time()) {
                     return null;
                 }
-                // A new mail link replaces the previous one.
-                vt_query(
-                    'UPDATE vt_bookings SET mail_token_hash = ?, last_mail_at = ? WHERE id = ?',
-                    [vt_hash_token($mailToken), time(), $booking['id']]
-                );
+                // Claimed right away, so two quick clicks don't send two mails.
+                vt_query('UPDATE vt_bookings SET last_mail_at = ? WHERE id = ?', [time(), $booking['id']]);
                 return $booking;
             });
 
-            if ($result !== null) {
-                try {
-                    vt_send_booking_mail($result, find_event($eventId), $mailToken, 'self', vt_mail_language($input['lang'] ?? null));
-                } catch (Throwable $e) {
-                    error_log('[volunteertable] Could not send booking mail: ' . $e->getMessage());
-                    respond(502, ['error' => 'mail_failed']);
-                }
+            // A new link for the address; links sent earlier keep working.
+            if ($result !== null
+                && !send_booking_mail(['booking' => $result, 'event' => find_event($eventId)], 'self', vt_mail_language($input['lang'] ?? null))) {
+                respond(502, ['error' => 'mail_failed']);
             }
             // Same answer whether or not the address is registered (or was mailed
             // a moment ago), so this can't be used to find out who registered.

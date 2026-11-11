@@ -17,9 +17,11 @@ return [
     'booking.responsible' => 'Responsible: {names}',
     'booking.notIntended' => "If you didn't expect this or can't make it, you can cancel with the link below.",
     'booking.linkIntro' => 'To change or cancel your registration, open this link:',
-    'booking.linkInfo' => "Opening the link also shows all your registrations made with this email\n"
-        . "address under \"My events\" in that browser.\n"
-        . "Anyone with this link can change your registration, so please don't share it.",
+    'booking.linkInfo' => "The link shows all your registrations made with this email address under\n"
+        . "\"My events\", also later ones, in every browser where you open it.\n"
+        . "Anyone with this link can change your registrations, so please don't share it.",
+    'booking.noFurtherMails' => "You won't get another email when you register for more events with this\n"
+        . 'address: keep this email, its link always shows all of them.',
 
     'admin.subject' => 'Your admin link for the volunteer table',
     'admin.hello' => 'Hello {name},',

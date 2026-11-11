@@ -109,6 +109,16 @@ function vt_schema_statements(string $driver): array
             name VARCHAR(64) NOT NULL PRIMARY KEY,
             value TEXT NOT NULL
         )' . $options,
+
+        // Links sent by email, one per mail. They belong to an email address, not
+        // to a single registration: opening one shows all registrations of that
+        // address (also later ones) in the browser, and cancelling a registration
+        // doesn't break it.
+        'CREATE TABLE IF NOT EXISTS vt_email_links (
+            token_hash CHAR(64) NOT NULL PRIMARY KEY,
+            email_key VARCHAR(254) NOT NULL,
+            created_at BIGINT NOT NULL
+        )' . $options,
     ];
 }
 
@@ -129,7 +139,7 @@ function vt_ensure_schema(PDO $db): void
     // Checks the most recently added table; all statements are "IF NOT EXISTS",
     // so databases created by an older version just get the missing tables.
     try {
-        $db->query('SELECT 1 FROM vt_texts WHERE 1 = 0');
+        $db->query('SELECT 1 FROM vt_email_links WHERE 1 = 0');
     } catch (PDOException $e) {
         vt_create_tables($db);
     }

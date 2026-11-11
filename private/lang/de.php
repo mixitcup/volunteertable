@@ -15,9 +15,11 @@ return [
     'booking.responsible' => 'Verantwortlich: {names}',
     'booking.notIntended' => 'Falls du damit nicht gerechnet hast oder nicht kannst, kannst du mit dem Link unten absagen.',
     'booking.linkIntro' => 'Um deine Anmeldung zu ändern oder abzusagen, öffne diesen Link:',
-    'booking.linkInfo' => "Wenn du den Link öffnest, siehst du in diesem Browser unter „Meine Schichten“\n"
-        . "auch alle anderen Anmeldungen mit dieser E-Mail-Adresse.\n"
-        . 'Wer diesen Link hat, kann deine Anmeldung ändern, also gib ihn bitte nicht weiter.',
+    'booking.linkInfo' => "Der Link zeigt unter „Meine Schichten“ alle deine Anmeldungen mit dieser\n"
+        . "E-Mail-Adresse, auch spätere, in jedem Browser, in dem du ihn öffnest.\n"
+        . 'Wer diesen Link hat, kann deine Anmeldungen ändern, also gib ihn bitte nicht weiter.',
+    'booking.noFurtherMails' => "Wenn du dich mit dieser Adresse für weitere Veranstaltungen anmeldest, bekommst\n"
+        . 'du keine weitere E-Mail: Heb diese E-Mail auf, ihr Link zeigt immer alle an.',
 
     'admin.subject' => 'Dein Admin-Link für die Helfer*innen-Tabelle',
     'admin.hello' => 'Hallo {name},',
