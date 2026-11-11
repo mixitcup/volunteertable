@@ -81,6 +81,24 @@ function respond(int $status, array $body): void
     exit;
 }
 
+/**
+ * Fingerprint of the page's own files (HTML, JavaScript, CSS). It changes when a
+ * new version is deployed, so open pages can reload themselves (see index.htm).
+ */
+function code_version(): string
+{
+    $root = dirname(__DIR__);
+    $parts = [];
+    $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+    foreach ($files as $file) {
+        if ($file->isFile() && preg_match('/\.(html?|js|css|php)$/i', $file->getFilename()) === 1) {
+            $parts[] = substr($file->getPathname(), strlen($root)) . ':' . $file->getMTime() . ':' . $file->getSize();
+        }
+    }
+    sort($parts);
+    return substr(sha1(implode("\n", $parts)), 0, 16);
+}
+
 function public_booking(array $booking): array
 {
     return [
@@ -357,6 +375,7 @@ try {
                 'access' => $access,
                 'bookings' => $access ? array_map('public_booking', vt_session_bookings($session)) : [],
                 'version' => $version,
+                'codeVersion' => code_version(),
                 'adminExists' => vt_admin_exists(),
                 'admin' => public_admin($admin),
                 // Shown to everyone, also before opening the invitation link.
@@ -366,8 +385,8 @@ try {
             ]);
         }
         if ($action === 'version') {
-            // Polled by open pages; reveals nothing but a random value.
-            respond(200, ['version' => vt_data_version()]);
+            // Polled by open pages; reveals nothing but a random value and a file fingerprint.
+            respond(200, ['version' => vt_data_version(), 'codeVersion' => code_version()]);
         }
         if ($action === 'admin_users') {
             require_admin();

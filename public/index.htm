@@ -162,6 +162,13 @@
           target = null;
         }
 
+        // A new version of the page was deployed: switching tabs is a good moment to load it.
+        var tabChanged = Boolean(lastTabPanelId) && lastTabPanelId !== panel.id;
+        lastTabPanelId = panel.id;
+        if (tabChanged && newCodeAvailable && !reloadingForNewCode && !isUserBusy()) {
+          reloadForNewCode();
+        }
+
         document.querySelectorAll('.tab-panel').forEach(function(node) {
           node.hidden = node !== panel;
         });
@@ -1678,6 +1685,7 @@
           admin = my.data.admin;
           inviteLink = my.data.inviteLink;
           dataVersion = my.data.version;
+          noteCodeVersion(my.data.codeVersion);
           page = my.data.page;
           renderPageTexts();
           if (!hasAccess) {
@@ -1774,6 +1782,9 @@
         }
         checkingForUpdates = true;
         api('version').then(function(result) {
+          if (result.ok) {
+            noteCodeVersion(result.data.codeVersion);
+          }
           if (result.ok && result.data.version !== dataVersion && !isUserBusy()) {
             return reload();
           }
@@ -1781,6 +1792,43 @@
           // Offline or a server hiccup: try again at the next check.
         }).then(function() {
           checkingForUpdates = false;
+        });
+      }
+
+      /*
+       * New versions of the page itself: the server reports a fingerprint of the
+       * page's files. When it changes, the page reloads at the next tab switch
+       * (see showTabForHash), not in the middle of reading or typing.
+       */
+      var codeVersion = null;
+      var newCodeAvailable = false;
+      var reloadingForNewCode = false;
+      // Set by showTabForHash(), which already runs before this line: no initial value here.
+      var lastTabPanelId;
+
+      function noteCodeVersion(version) {
+        if (!version) {
+          return;
+        }
+        if (codeVersion === null) {
+          codeVersion = version;
+        } else if (version !== codeVersion) {
+          newCodeAvailable = true;
+        }
+      }
+
+      // A plain reload may still use cached scripts and styles, so they are
+      // fetched fresh first (which updates the browser's cache), then the page reloads.
+      function reloadForNewCode() {
+        reloadingForNewCode = true;
+        var urls = [window.location.pathname + window.location.search];
+        document.querySelectorAll('script[src], link[rel="stylesheet"][href]').forEach(function(node) {
+          urls.push(node.getAttribute('src') || node.getAttribute('href'));
+        });
+        Promise.all(urls.map(function(url) {
+          return fetch(url, { cache: 'reload', credentials: 'same-origin' }).catch(function() { return null; });
+        })).then(function() {
+          window.location.reload();
         });
       }
 
