@@ -782,29 +782,49 @@
        * My events tab
        * ------------------------------------------------------------------ */
 
+      // Whether the "Past events" section on "My events" is unfolded (kept when the list is redrawn).
+      var myPastEventsOpen = false;
+
+      // Upcoming (and ongoing) registrations first; past ones folded away at the end,
+      // like on the Events tab.
       function renderMyEvents(locationInfoIds) {
         var list = document.querySelector('.my-event-list');
         list.textContent = '';
-
-        var count = document.getElementById('my-events-count');
-        count.textContent = String(myBookings.length);
-        count.hidden = myBookings.length === 0;
 
         var entries = myBookings
           .map(function(booking) { return { booking: booking, event: findEvent(booking.eventId) }; })
           .filter(function(entry) { return entry.event !== null; })
           .sort(function(a, b) { return new Date(a.event.start) - new Date(b.event.start); });
+        var upcoming = entries.filter(function(entry) { return !isPast(entry.event); });
+        var past = entries.filter(function(entry) { return isPast(entry.event); });
+
+        // The tab shows how many registrations are still ahead.
+        var count = document.getElementById('my-events-count');
+        count.textContent = String(upcoming.length);
+        count.hidden = upcoming.length === 0;
 
         if (entries.length === 0) {
           list.appendChild(el('p', null, t('myEvents.none')));
           list.appendChild(el('p', 'hint', t('myEvents.hint')));
           return;
         }
+        if (upcoming.length === 0) {
+          list.appendChild(el('p', 'empty-state', t('myEvents.allOver')));
+        }
 
-        entries.forEach(function(entry) {
+        var pastSection = null;
+        if (past.length > 0) {
+          pastSection = el('details', 'past-events', el('summary', null, t('events.past', { n: past.length })));
+          pastSection.open = myPastEventsOpen;
+          pastSection.addEventListener('toggle', function() {
+            myPastEventsOpen = pastSection.open;
+          });
+        }
+
+        upcoming.concat(past).forEach(function(entry) {
           var booking = entry.booking;
           var event = entry.event;
-          var article = list.appendChild(el('article'));
+          var article = (isPast(event) ? pastSection : list).appendChild(el('article'));
           article.id = 'my-booking-' + booking.id;
           article.dataset.start = new Date(event.start).getTime();
           article.dataset.end = new Date(event.end).getTime();
@@ -853,6 +873,9 @@
           }
         });
 
+        if (pastSection !== null) {
+          list.appendChild(pastSection);
+        }
         updateEventTimes();
       }
 

@@ -112,6 +112,7 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'confirmation.mailNewBrowser': 'Dieser Browser zeigt deine anderen Anmeldungen noch nicht an. Wir haben dir deinen persönlichen Link an {email} geschickt: Öffne ihn hier, dann siehst du alle.',
   // Meine Schichten
   'myEvents.none': 'Du hast dich in diesem Browser noch für keine Veranstaltung angemeldet.',
+  'myEvents.allOver': 'Alle Veranstaltungen, für die du angemeldet warst, sind vorbei. Danke fürs Mithelfen!',
   'myEvents.hint': 'Woanders angemeldet? Öffne den Link aus deiner Bestätigungs-E-Mail: Dann erscheinen hier alle Anmeldungen mit dieser E-Mail-Adresse.',
   'myEvents.registeredAs': 'Angemeldet als',
   'myEvents.changeName': 'Namen ändern',

@@ -114,6 +114,7 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'confirmation.mailNewBrowser': 'This browser doesn’t show your other registrations yet. We sent your personal link to {email}: open it here to see all of them.',
   // My events tab
   'myEvents.none': 'You haven’t registered for any events in this browser yet.',
+  'myEvents.allOver': 'All events you registered for are over. Thanks for helping!',
   'myEvents.hint': 'Registered somewhere else? Open the link from your confirmation email: all your registrations made with that email address will then show up here.',
   'myEvents.registeredAs': 'Registered as',
   'myEvents.changeName': 'Change name',
