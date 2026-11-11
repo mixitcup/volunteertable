@@ -734,12 +734,40 @@ Timetable.text = function(key, params) {
 		 * timeline is hidden (it can't be scrolled then), so it can be retried.
 		 */
 		scrollToNow: function() {
-			var scrollNode = this.scrollNode;
-			if (!scrollNode || scrollNode.clientWidth === 0) {
+			var position = this.nowScrollPosition();
+			if (position === null) {
 				return false;
 			}
+			this.scrollNode.scrollLeft = position;
+			return true;
+		},
+
+		// The default scroll position (a little past, mostly now and next), or null
+		// while the timetable is hidden.
+		nowScrollPosition: function() {
+			var scrollNode = this.scrollNode;
+			if (!scrollNode || scrollNode.clientWidth === 0) {
+				return null;
+			}
 			var pastWidth = Math.min(this.layout.hourWidth, scrollNode.clientWidth * 0.2);
-			scrollNode.scrollLeft = Math.max(0, this.layout.positionOf(new Date()) - pastWidth);
+			return Math.max(0, Math.min(this.layout.positionOf(new Date()) - pastWidth,
+				scrollNode.scrollWidth - scrollNode.clientWidth));
+		},
+
+		/*
+		 * Scrolls back to the default position if the view starts earlier than it,
+		 * i.e. shows mostly the past. A view scrolled ahead into the future is kept.
+		 * Returns false while the timetable is hidden.
+		 */
+		scrollToNowIfInPast: function() {
+			var position = this.nowScrollPosition();
+			if (position === null) {
+				return false;
+			}
+			// A few pixels of tolerance for rounding.
+			if (this.scrollNode.scrollLeft < position - 4) {
+				this.scrollNode.scrollLeft = position;
+			}
 			return true;
 		}
 	};

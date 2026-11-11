@@ -142,11 +142,17 @@
        * Tabs
        * ------------------------------------------------------------------ */
 
-      // Scrolling only works while the timetable is visible, so this is
-      // retried whenever the timetable tab is shown until it succeeds once.
+      // Whenever the timetable tab is shown: the first time, scroll to now; later,
+      // scroll back to now only if the view is in the past (looking ahead is kept).
+      // Scrolling only works while the timetable is visible.
       function scrollTimetableToNow() {
-        if (timetableRenderer !== null && !timetableScrolledToNow) {
+        if (timetableRenderer === null) {
+          return;
+        }
+        if (!timetableScrolledToNow) {
           timetableScrolledToNow = timetableRenderer.scrollToNow();
+        } else {
+          timetableRenderer.scrollToNowIfInPast();
         }
       }
 
