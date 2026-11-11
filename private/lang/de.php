@@ -27,9 +27,15 @@ return [
     'personal.keep' => "Bitte heb diese E-Mail auf. Der Link zeigt unter „Meine Schichten“ alles, wofür\n"
         . "du dich mit dieser E-Mail-Adresse angemeldet hast, auch spätere Anmeldungen, und\n"
         . "du kannst sie dort ändern oder absagen, in jedem Browser, in dem du ihn öffnest.\n"
-        . 'Für weitere Anmeldungen bekommst du keine weitere E-Mail.',
+        . 'Für weitere Anmeldungen im selben Browser bekommst du keine weitere E-Mail.',
     'personal.firstRegistration' => 'Deine erste Anmeldung:',
     'personal.askedFor' => 'Du hast den Link angefordert für:',
+    // Wenn die Adresse in einem Browser benutzt wird, der die anderen Anmeldungen noch nicht zeigt.
+    'personal.introNewBrowser' => "du hast dich gerade für „{event}“ in einem Browser (oder auf einem Gerät)\n"
+        . "angemeldet, der deine anderen Anmeldungen noch nicht anzeigt. Damit du dort alle\n"
+        . "Anmeldungen mit dieser E-Mail-Adresse siehst und verwalten kannst, öffne dort\n"
+        . 'deinen persönlichen Link:',
+    'personal.newRegistration' => 'Deine neue Anmeldung:',
     'personal.dontShare' => 'Wer diesen Link hat, kann deine Anmeldungen ändern, also gib ihn bitte nicht weiter.',
 
     'admin.subject' => 'Dein Admin-Link für die Helfer*innen-Tabelle',

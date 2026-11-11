@@ -382,6 +382,23 @@ function vt_email_has_link(string $emailKey): bool
     return vt_query('SELECT 1 FROM vt_email_links WHERE email_key = ?', [$emailKey])->fetchColumn() !== false;
 }
 
+/**
+ * Whether this browser already knows the address: it opened the personal link,
+ * or registered with this address before.
+ */
+function vt_session_knows_email(?string $session, string $emailKey): bool
+{
+    if ($session === null) {
+        return false;
+    }
+    return vt_query('SELECT 1 FROM vt_session_emails WHERE session_hash = ? AND email_key = ?', [$session, $emailKey])->fetchColumn() !== false
+        || vt_query(
+            'SELECT 1 FROM vt_session_bookings sb JOIN vt_bookings b ON b.id = sb.booking_id
+             WHERE sb.session_hash = ? AND b.email_key = ?',
+            [$session, $emailKey]
+        )->fetchColumn() !== false;
+}
+
 function vt_delete_booking(string $bookingId): void
 {
     vt_transaction(function () use ($bookingId) {
@@ -714,7 +731,7 @@ function vt_send_booking_mail(array $booking, array $event, string $mailToken, s
     if ($link === null) {
         throw new RuntimeException('base_url must be configured to send mails');
     }
-    if (!in_array($registeredBy, ['self', 'resend', 'someone_else', 'admin'], true)) {
+    if (!in_array($registeredBy, ['self', 'resend', 'new_browser', 'someone_else', 'admin'], true)) {
         $registeredBy = 'self';
     }
 
@@ -727,16 +744,20 @@ function vt_send_booking_mail(array $booking, array $event, string $mailToken, s
         . "  {$event['location_name']}\n"
         . ($responsible !== null ? '  ' . $text('booking.responsible', ['names' => $responsible]) . "\n" : '');
 
-    if ($registeredBy === 'self' || $registeredBy === 'resend') {
-        // Registering yourself mails only once per address (and on request), so this mail
-        // is about the page: the personal link to all registrations, the event comes second.
+    if (in_array($registeredBy, ['self', 'resend', 'new_browser'], true)) {
+        // Registering yourself mails only at the first registration with an address,
+        // in a new browser, and on request, so this mail is about the page: the
+        // personal link to all registrations, the event comes second.
         $pageTitle = vt_page_texts()['title'] ?? $text('page.defaultTitle');
+        $intro = ['self' => 'personal.intro', 'resend' => 'personal.intro', 'new_browser' => 'personal.introNewBrowser'];
+        $eventLabel = ['self' => 'personal.firstRegistration', 'resend' => 'personal.askedFor',
+            'new_browser' => 'personal.newRegistration'];
         $subject = $text('personal.subject', ['page' => $pageTitle]);
         $body = $text('booking.hello', ['name' => $booking['name']]) . "\n\n"
-            . $text('personal.intro', ['page' => $pageTitle]) . "\n\n"
+            . $text($intro[$registeredBy], ['page' => $pageTitle, 'event' => $event['name']]) . "\n\n"
             . "{$link}\n\n"
             . $text('personal.keep') . "\n\n"
-            . $text($registeredBy === 'resend' ? 'personal.askedFor' : 'personal.firstRegistration') . "\n\n"
+            . $text($eventLabel[$registeredBy]) . "\n\n"
             . $eventDetails . "\n"
             . $text('personal.dontShare') . "\n";
     } else {

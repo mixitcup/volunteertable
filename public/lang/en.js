@@ -110,8 +110,8 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'confirmation.text': 'With this link you can change or cancel your registration later, also on another device:',
   'confirmation.mailSent': 'We also sent the link to {email}.',
   'confirmation.mailFailed': 'We could not send this link by email, so please save it now.',
-  'confirmation.mailSkipped': 'No new email this time: the link in the email we sent to {email} at your first registration already shows all your registrations, including this one.',
-
+  'confirmation.mailSkipped': 'No new email this time: the personal link we sent to {email} earlier already shows all your registrations, including this one.',
+  'confirmation.mailNewBrowser': 'This browser doesn’t show your other registrations yet. We sent your personal link to {email}: open it here to see all of them.',
   // My events tab
   'myEvents.none': 'You haven’t registered for any events in this browser yet.',
   'myEvents.hint': 'Registered somewhere else? Open the link from your confirmation email: all your registrations made with that email address will then show up here.',

@@ -429,8 +429,11 @@ try {
             }
 
             $forSomeoneElse = ($input['forSomeoneElse'] ?? false) === true;
-            // Checked before registering: has this address ever been sent its link?
-            $firstForAddress = !vt_email_has_link(vt_email_key($email));
+            // Checked before registering: has this address ever been sent its link,
+            // and does this browser already know the address?
+            $emailKey = vt_email_key($email);
+            $firstForAddress = !vt_email_has_link($emailKey);
+            $newBrowser = !$firstForAddress && !vt_session_knows_email(vt_session(false), $emailKey);
             $result = create_booking($eventId, $name, $email, false);
 
             if ($forSomeoneElse) {
@@ -447,14 +450,22 @@ try {
             // nobody has proven yet that they can read mail sent to it.
             vt_insert_link('vt_session_bookings', ['session_hash' => vt_session(true), 'booking_id' => $result['booking']['id']]);
 
-            // Only the first registration with an address sends a mail: its link shows
-            // all registrations of that address, including later ones. Registrations by
-            // someone else or by an admin (above/below) always send one.
+            // Registering yourself sends the personal link (which shows all registrations
+            // of the address, including later ones):
+            //  - 'first': the first time the address is used at all;
+            //  - 'new_browser': the first time it is used in a browser that doesn't know
+            //    it yet (didn't open the link, didn't register with it before), so the
+            //    other registrations can be brought over to that browser.
+            // Otherwise no mail. Registrations by someone else or by an admin always send one.
+            $reason = $firstForAddress ? 'first' : ($newBrowser ? 'new_browser' : null);
             respond(201, [
                 'booking' => public_booking($result['booking']),
                 'editLink' => vt_edit_link($result['editToken'], false),
-                'mailSent' => $firstForAddress && send_booking_mail($result, 'self', vt_mail_language($input['lang'] ?? null)),
-                'mailSkipped' => !$firstForAddress,
+                'mailSent' => $reason !== null
+                    && send_booking_mail($result, $reason === 'first' ? 'self' : 'new_browser', vt_mail_language($input['lang'] ?? null)),
+                'mailReason' => $reason,
+                // No mail on purpose: this browser already knows the address.
+                'mailSkipped' => $reason === null,
             ]);
 
         case 'admin_add_booking':

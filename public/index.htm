@@ -694,8 +694,9 @@
                 confirmations[event.id] = {
                   editLink: result.data.editLink,
                   mailSent: result.data.mailSent,
-                  // Not the first registration with this address: no new mail on purpose.
+                  // No new mail on purpose: this browser already knows the address.
                   mailSkipped: result.data.mailSkipped === true,
+                  mailReason: result.data.mailReason || null,
                   email: email
                 };
                 return reload();
@@ -763,11 +764,18 @@
         return el('div', 'booking-confirmation',
           el('p', null, el('strong', null, t('confirmation.thanks')), ' ' + t('confirmation.text')),
           el('div', 'edit-link-row', input, copy),
-          el('p', 'hint', confirmation.mailSkipped ?
-            t('confirmation.mailSkipped', { email: confirmation.email }) :
-            confirmation.mailSent ?
-              t('confirmation.mailSent', { email: confirmation.email }) :
-              t('confirmation.mailFailed')));
+          el('p', 'hint', t(confirmationMailText(confirmation), { email: confirmation.email })));
+      }
+
+      // What happened with the email after registering yourself.
+      function confirmationMailText(confirmation) {
+        if (confirmation.mailSkipped) {
+          return 'confirmation.mailSkipped';
+        }
+        if (!confirmation.mailSent) {
+          return 'confirmation.mailFailed';
+        }
+        return confirmation.mailReason === 'new_browser' ? 'confirmation.mailNewBrowser' : 'confirmation.mailSent';
       }
 
       /* ------------------------------------------------------------------

@@ -29,9 +29,14 @@ return [
     'personal.keep' => "Please keep this email. The link shows everything you have registered for with\n"
         . "this email address under \"My events\", including later registrations, and lets\n"
         . "you change or cancel them, in every browser where you open it. You won't get\n"
-        . 'another email when you register for more events.',
+        . 'another email when you register for more events in the same browser.',
     'personal.firstRegistration' => 'Your first registration:',
     'personal.askedFor' => 'You asked for the link for:',
+    // Sent when the address is used in a browser that doesn't show its other registrations yet.
+    'personal.introNewBrowser' => "you just registered for \"{event}\" in a browser (or on a device) that doesn't\n"
+        . "show your other registrations yet. To see and manage all your registrations\n"
+        . 'with this email address there, open your personal link in that browser:',
+    'personal.newRegistration' => 'Your new registration:',
     'personal.dontShare' => "Anyone with this link can change your registrations, so please don't share it.",
 
     'admin.subject' => 'Your admin link for the volunteer table',
