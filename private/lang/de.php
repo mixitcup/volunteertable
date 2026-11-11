@@ -9,7 +9,6 @@ return [
 
     'booking.subject' => 'Deine Anmeldung: {event}',
     'booking.hello' => 'Hallo {name},',
-    'booking.intro.self' => 'du bist angemeldet für:',
     'booking.intro.someone_else' => 'jemand hat dich angemeldet für:',
     'booking.intro.admin' => 'das Orga-Team hat dich angemeldet für:',
     'booking.responsible' => 'Verantwortlich: {names}',
@@ -18,8 +17,20 @@ return [
     'booking.linkInfo' => "Der Link zeigt unter „Meine Schichten“ alle deine Anmeldungen mit dieser\n"
         . "E-Mail-Adresse, auch spätere, in jedem Browser, in dem du ihn öffnest.\n"
         . 'Wer diesen Link hat, kann deine Anmeldungen ändern, also gib ihn bitte nicht weiter.',
-    'booking.noFurtherMails' => "Wenn du dich mit dieser Adresse für weitere Veranstaltungen anmeldest, bekommst\n"
-        . 'du keine weitere E-Mail: Heb diese E-Mail auf, ihr Link zeigt immer alle an.',
+
+    // Die E-Mail beim eigenen Anmelden: einmal pro Adresse (und auf Wunsch), über die
+    // Seite und den persönlichen Link, darunter die erste Anmeldung.
+    'page.defaultTitle' => 'VolunteerTable',
+    'personal.subject' => 'Dein persönlicher Link für {page}',
+    'personal.intro' => "danke, dass du bei {page} mitmachst! Das ist dein persönlicher Link zu allen\n"
+        . 'deinen Anmeldungen:',
+    'personal.keep' => "Bitte heb diese E-Mail auf. Der Link zeigt unter „Meine Schichten“ alles, wofür\n"
+        . "du dich mit dieser E-Mail-Adresse angemeldet hast, auch spätere Anmeldungen, und\n"
+        . "du kannst sie dort ändern oder absagen, in jedem Browser, in dem du ihn öffnest.\n"
+        . 'Für weitere Anmeldungen bekommst du keine weitere E-Mail.',
+    'personal.firstRegistration' => 'Deine erste Anmeldung:',
+    'personal.askedFor' => 'Du hast den Link angefordert für:',
+    'personal.dontShare' => 'Wer diesen Link hat, kann deine Anmeldungen ändern, also gib ihn bitte nicht weiter.',
 
     'admin.subject' => 'Dein Admin-Link für die Helfer*innen-Tabelle',
     'admin.hello' => 'Hallo {name},',

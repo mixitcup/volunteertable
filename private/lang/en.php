@@ -11,7 +11,6 @@ return [
 
     'booking.subject' => 'Your registration: {event}',
     'booking.hello' => 'Hello {name},',
-    'booking.intro.self' => 'you are registered for:',
     'booking.intro.someone_else' => 'someone has registered you for:',
     'booking.intro.admin' => 'an organizer has registered you for:',
     'booking.responsible' => 'Responsible: {names}',
@@ -20,8 +19,20 @@ return [
     'booking.linkInfo' => "The link shows all your registrations made with this email address under\n"
         . "\"My events\", also later ones, in every browser where you open it.\n"
         . "Anyone with this link can change your registrations, so please don't share it.",
-    'booking.noFurtherMails' => "You won't get another email when you register for more events with this\n"
-        . 'address: keep this email, its link always shows all of them.',
+
+    // The mail for registering yourself: sent once per address (and on request),
+    // about the page and the personal link, with the first registration below.
+    'page.defaultTitle' => 'VolunteerTable',
+    'personal.subject' => 'Your personal link for {page}',
+    'personal.intro' => "thanks for signing up at {page}! This is your personal link to all your\n"
+        . 'registrations:',
+    'personal.keep' => "Please keep this email. The link shows everything you have registered for with\n"
+        . "this email address under \"My events\", including later registrations, and lets\n"
+        . "you change or cancel them, in every browser where you open it. You won't get\n"
+        . 'another email when you register for more events.',
+    'personal.firstRegistration' => 'Your first registration:',
+    'personal.askedFor' => 'You asked for the link for:',
+    'personal.dontShare' => "Anyone with this link can change your registrations, so please don't share it.",
 
     'admin.subject' => 'Your admin link for the volunteer table',
     'admin.hello' => 'Hello {name},',

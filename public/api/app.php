@@ -783,7 +783,7 @@ try {
 
             // A new link for the address; links sent earlier keep working.
             if ($result !== null
-                && !send_booking_mail(['booking' => $result, 'event' => find_event($eventId)], 'self', vt_mail_language($input['lang'] ?? null))) {
+                && !send_booking_mail(['booking' => $result, 'event' => find_event($eventId)], 'resend', vt_mail_language($input['lang'] ?? null))) {
                 respond(502, ['error' => 'mail_failed']);
             }
             // Same answer whether or not the address is registered (or was mailed

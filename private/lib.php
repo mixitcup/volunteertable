@@ -714,7 +714,7 @@ function vt_send_booking_mail(array $booking, array $event, string $mailToken, s
     if ($link === null) {
         throw new RuntimeException('base_url must be configured to send mails');
     }
-    if (!in_array($registeredBy, ['self', 'someone_else', 'admin'], true)) {
+    if (!in_array($registeredBy, ['self', 'resend', 'someone_else', 'admin'], true)) {
         $registeredBy = 'self';
     }
 
@@ -722,19 +722,34 @@ function vt_send_booking_mail(array $booking, array $event, string $mailToken, s
         return vt_mail_text($lang, $key, $params);
     };
     $responsible = $event['responsible'] ?? null;
-    $subject = $text('booking.subject', ['event' => $event['name']]);
-    $body = $text('booking.hello', ['name' => $booking['name']]) . "\n\n"
-        . $text('booking.intro.' . $registeredBy) . "\n\n"
-        . "  {$event['name']}\n"
+    $eventDetails = "  {$event['name']}\n"
         . '  ' . vt_format_event_time($event, $lang) . "\n"
         . "  {$event['location_name']}\n"
-        . ($responsible !== null ? '  ' . $text('booking.responsible', ['names' => $responsible]) . "\n" : '')
-        . "\n"
-        . ($registeredBy === 'self' ? '' : $text('booking.notIntended') . "\n\n")
-        . $text('booking.linkIntro') . "\n\n"
-        . "{$link}\n\n"
-        . $text('booking.linkInfo') . "\n"
-        . ($registeredBy === 'self' ? "\n" . $text('booking.noFurtherMails') . "\n" : '');
+        . ($responsible !== null ? '  ' . $text('booking.responsible', ['names' => $responsible]) . "\n" : '');
+
+    if ($registeredBy === 'self' || $registeredBy === 'resend') {
+        // Registering yourself mails only once per address (and on request), so this mail
+        // is about the page: the personal link to all registrations, the event comes second.
+        $pageTitle = vt_page_texts()['title'] ?? $text('page.defaultTitle');
+        $subject = $text('personal.subject', ['page' => $pageTitle]);
+        $body = $text('booking.hello', ['name' => $booking['name']]) . "\n\n"
+            . $text('personal.intro', ['page' => $pageTitle]) . "\n\n"
+            . "{$link}\n\n"
+            . $text('personal.keep') . "\n\n"
+            . $text($registeredBy === 'resend' ? 'personal.askedFor' : 'personal.firstRegistration') . "\n\n"
+            . $eventDetails . "\n"
+            . $text('personal.dontShare') . "\n";
+    } else {
+        // Registered by someone else or an admin: about this one registration.
+        $subject = $text('booking.subject', ['event' => $event['name']]);
+        $body = $text('booking.hello', ['name' => $booking['name']]) . "\n\n"
+            . $text('booking.intro.' . $registeredBy) . "\n\n"
+            . $eventDetails . "\n"
+            . $text('booking.notIntended') . "\n\n"
+            . $text('booking.linkIntro') . "\n\n"
+            . "{$link}\n\n"
+            . $text('booking.linkInfo') . "\n";
+    }
 
     vt_send_mail($booking['email'], $booking['name'], $subject, $body);
 }
