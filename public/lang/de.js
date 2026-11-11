@@ -110,6 +110,10 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'confirmation.mailFailed': 'Wir konnten den Link nicht per E-Mail schicken, bitte speichere ihn jetzt.',
   'confirmation.mailSkipped': 'Diesmal keine neue E-Mail: Der persönliche Link, den wir dir an {email} geschickt haben, zeigt schon alle deine Anmeldungen, auch diese.',
   'confirmation.mailNewBrowser': 'Dieser Browser zeigt deine anderen Anmeldungen noch nicht an. Wir haben dir deinen persönlichen Link an {email} geschickt: Öffne ihn hier, dann siehst du alle.',
+  // Saving an event to the calendar
+  'calendar.add': 'Zum Kalender hinzufügen',
+  'calendar.google': 'Google Kalender',
+
   // Meine Schichten
   'myEvents.none': 'Du hast dich in diesem Browser noch für keine Veranstaltung angemeldet.',
   'myEvents.allOver': 'Alle Veranstaltungen, für die du angemeldet warst, sind vorbei. Danke fürs Mithelfen!',

@@ -299,6 +299,18 @@ a {
   gap: 16px;
 }
 
+.calendar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+
+.booking-confirmation .calendar-actions {
+  margin-bottom: 0;
+}
+
 .inline-name-form {
   display: flex;
   flex-wrap: wrap;

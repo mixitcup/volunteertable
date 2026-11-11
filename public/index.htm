@@ -560,7 +560,9 @@
           actions.appendChild(el('p', null,
             el('span', 'registered-badge', t('events.youAreRegistered', { name: myBooking.name })), ' ', editLink));
           if (confirmation) {
-            actions.appendChild(renderConfirmation(confirmation));
+            actions.appendChild(renderConfirmation(confirmation, isPast(event) ? null : event));
+          } else if (!isPast(event)) {
+            actions.appendChild(el('div', 'calendar-actions', calendarButton(event), googleCalendarLink(event)));
           }
         }
 
@@ -743,7 +745,8 @@
         return resend;
       }
 
-      function renderConfirmation(confirmation) {
+      // event: show the calendar buttons too (left out where they are shown anyway).
+      function renderConfirmation(confirmation, event) {
         var input = el('input');
         input.readOnly = true;
         input.value = confirmation.editLink;
@@ -761,10 +764,125 @@
           });
         });
 
-        return el('div', 'booking-confirmation',
+        var box = el('div', 'booking-confirmation',
           el('p', null, el('strong', null, t('confirmation.thanks')), ' ' + t('confirmation.text')),
           el('div', 'edit-link-row', input, copy),
           el('p', 'hint', t(confirmationMailText(confirmation), { email: confirmation.email })));
+        // On "My events" the calendar buttons are already below each registration.
+        if (event) {
+          box.appendChild(el('div', 'calendar-actions', calendarButton(event), googleCalendarLink(event)));
+        }
+        return box;
+      }
+
+      /* ------------------------------------------------------------------
+       * Saving an event to the calendar
+       * ------------------------------------------------------------------ */
+
+      // 20260612T080000Z: a point in time in UTC, as calendars expect it.
+      function calendarTime(date) {
+        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      }
+
+      // Page link to the event, so the calendar entry leads back here.
+      function eventPageLink(event) {
+        return location.origin + location.pathname + location.search + '#' + getEventInfoId(event);
+      }
+
+      function calendarDetails(event) {
+        var lines = [];
+        if (event.responsible) {
+          lines.push(t('events.responsible') + ' ' + event.responsible);
+        }
+        if (event.info) {
+          lines.push(event.info);
+        }
+        if (event.url) {
+          lines.push(event.url);
+        }
+        // What the Locations tab says about the place, e.g. how to get there.
+        var place = data.locations.filter(function(location) { return location.id === event.locationId; })[0];
+        if (place && (place.info || place.url)) {
+          lines.push([t('field.location') + ': ' + place.name, place.info, place.url]
+            .filter(function(part) { return part; }).join('\n'));
+        }
+        lines.push(document.title + ': ' + eventPageLink(event));
+        return lines.join('\n\n');
+      }
+
+      // Escapes a text value for an .ics file.
+      function icsText(text) {
+        return String(text).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+      }
+
+      // .ics lines may be at most 75 bytes long; longer ones continue on the next line after a space.
+      function icsFold(line) {
+        var result = '';
+        var bytes = 0;
+        Array.from(line).forEach(function(char) {
+          var code = char.codePointAt(0);
+          var size = code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+          if (bytes + size > 75) {
+            result += '\r\n ';
+            bytes = 1;
+          }
+          result += char;
+          bytes += size;
+        });
+        return result;
+      }
+
+      function calendarFile(event) {
+        var lines = [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//VolunteerTable//EN',
+          'CALSCALE:GREGORIAN',
+          'METHOD:PUBLISH',
+          'BEGIN:VEVENT',
+          // The same ID for the same event, so adding it again updates the entry instead of duplicating it.
+          'UID:volunteertable-event-' + event.id + '@' + (location.hostname || 'localhost'),
+          'DTSTAMP:' + calendarTime(new Date()),
+          'DTSTART:' + calendarTime(new Date(event.start)),
+          'DTEND:' + calendarTime(new Date(event.end)),
+          'SUMMARY:' + icsText(event.name),
+          'LOCATION:' + icsText(event.location),
+          'DESCRIPTION:' + icsText(calendarDetails(event)),
+          'URL:' + eventPageLink(event),
+          'END:VEVENT',
+          'END:VCALENDAR'
+        ];
+        return lines.map(icsFold).join('\r\n') + '\r\n';
+      }
+
+      // Downloads an .ics file; phones and calendar apps offer to add it to the calendar.
+      function calendarButton(event) {
+        return button(t('calendar.add'), 'button button-secondary calendar-button', function() {
+          var blob = new Blob([calendarFile(event)], { type: 'text/calendar;charset=utf-8' });
+          var link = el('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = (event.name.replace(/[\\\/:*?"<>|]+/g, ' ').trim() || 'event') + '.ics';
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(function() { URL.revokeObjectURL(link.href); }, 10000);
+        });
+      }
+
+      // Google Calendar can't open .ics files on Android phones, so it gets its own link.
+      function googleCalendarLink(event) {
+        var params = [
+          'action=TEMPLATE',
+          'text=' + encodeURIComponent(event.name),
+          'dates=' + calendarTime(new Date(event.start)) + '/' + calendarTime(new Date(event.end)),
+          'location=' + encodeURIComponent(event.location),
+          'details=' + encodeURIComponent(calendarDetails(event))
+        ];
+        var link = el('a', 'external-link calendar-google', t('calendar.google'));
+        link.href = 'https://calendar.google.com/calendar/render?' + params.join('&');
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        return link;
       }
 
       // What happened with the email after registering yourself.
@@ -845,6 +963,10 @@
           var confirmation = confirmations[event.id];
           if (confirmation) {
             article.appendChild(renderConfirmation(confirmation));
+          }
+
+          if (!isPast(event)) {
+            article.appendChild(el('div', 'calendar-actions', calendarButton(event), googleCalendarLink(event)));
           }
 
           if (editingBookingId !== booking.id) {
