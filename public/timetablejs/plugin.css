@@ -399,7 +399,9 @@
 }
 
 /* Without a fill bar there is room for two lines; longer names end with "…"
-   (Timetable.NAME_LINES in plugin.js must match). */
+   (Timetable.NAME_LINES in plugin.js must match). Long words are hyphenated by
+   the browser in the page's language (<html lang>); where it can't, they are
+   broken anywhere. */
 .timetable .time-entry:not(.has-registration) .time-entry-name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -407,6 +409,8 @@
   line-clamp: 2;
   white-space: normal;
   overflow-wrap: anywhere;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 
 /* With a fill bar, the top line moves up to make room for it. */
