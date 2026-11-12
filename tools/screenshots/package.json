@@ -1,0 +1,12 @@
+{
+  "name": "volunteertable-screenshots",
+  "private": true,
+  "description": "Generates the README screenshots from example data",
+  "type": "module",
+  "scripts": {
+    "screenshots": "node generate.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}

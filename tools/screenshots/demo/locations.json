@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Competition Hall",
+    "info": "Main sports hall, entrance B. Indoor shoes required. Spotters get a short safety briefing at the start of each shift.",
+    "url": "https://www.openstreetmap.org/"
+  },
+  {
+    "name": "Warm-up Hall",
+    "info": "Small hall next to the changing rooms. Only athletes with a start number and their coaches inside."
+  },
+  {
+    "name": "Judges' Table",
+    "info": "On the gallery of the competition hall. Laptops and score sheets are provided."
+  },
+  {
+    "name": "Registration",
+    "info": "Foyer at the main entrance. Volunteers check in here too: pick up your T-shirt before your first shift."
+  },
+  {
+    "name": "Cafeteria",
+    "info": "Foyer, next to Registration. Cake donations are welcome, please bring them before 9:00."
+  }
+]

@@ -1,0 +1,229 @@
+[
+  {
+    "name": "Hall setup",
+    "location": "Competition Hall",
+    "start": "2026-06-13T07:00:00",
+    "end": "2026-06-13T09:00:00",
+    "info": "Setting up the trampolines, safety mats and the judges' gallery. Breakfast for everyone afterwards!",
+    "responsible": "Jo",
+    "capacity": 10,
+    "minimum": 6,
+    "bookings": [
+      { "name": "Anna", "email": "anna@example.org" },
+      { "name": "Ben", "email": "ben@example.org" },
+      { "name": "David", "email": "david@example.org" },
+      { "name": "Finn", "email": "finn@example.org" },
+      { "name": "Greta", "email": "greta@example.org" },
+      { "name": "Jonas", "email": "jonas@example.org" },
+      { "name": "Omar", "email": "omar@example.org" }
+    ]
+  },
+  {
+    "name": "Athlete check-in",
+    "location": "Registration",
+    "start": "2026-06-13T07:30:00",
+    "end": "2026-06-13T10:00:00",
+    "info": "Checking in the clubs and handing out start numbers.",
+    "responsible": "Mara",
+    "capacity": 3,
+    "bookings": [
+      { "name": "Chiara", "email": "chiara@example.org" },
+      { "name": "Elif", "email": "elif@example.org" }
+    ]
+  },
+  {
+    "name": "Cake & coffee: morning",
+    "location": "Cafeteria",
+    "start": "2026-06-13T08:00:00",
+    "end": "2026-06-13T11:30:00",
+    "info": "Making coffee and selling cake to parents and fans.",
+    "responsible": "Paul",
+    "capacity": 3,
+    "minimum": 2,
+    "bookings": [
+      { "name": "Lena", "email": "lena@example.org" },
+      { "name": "Nils", "email": "nils@example.org" }
+    ]
+  },
+  {
+    "name": "Warm-up supervision: morning",
+    "location": "Warm-up Hall",
+    "start": "2026-06-13T08:30:00",
+    "end": "2026-06-13T12:30:00",
+    "info": "Keeping an eye on the warm-up trampolines and calling the next squad.",
+    "responsible": "Ruth",
+    "capacity": 2,
+    "minimum": 1,
+    "bookings": [
+      { "name": "Greta", "email": "greta@example.org" }
+    ]
+  },
+  {
+    "name": "Spotting: morning",
+    "location": "Competition Hall",
+    "start": "2026-06-13T09:00:00",
+    "end": "2026-06-13T13:00:00",
+    "info": "Standing at the trampoline ends and pushing the safety mats. Experienced spotters only.",
+    "responsible": "Jo",
+    "capacity": 4,
+    "minimum": 4,
+    "bookings": [
+      { "name": "Anna", "email": "anna@example.org" },
+      { "name": "Ben", "email": "ben@example.org" },
+      { "name": "David", "email": "david@example.org" },
+      { "name": "Finn", "email": "finn@example.org" }
+    ]
+  },
+  {
+    "name": "Score entry: morning",
+    "location": "Judges' Table",
+    "start": "2026-06-13T09:00:00",
+    "end": "2026-06-13T13:00:00",
+    "info": "Typing the judges' scores into the results software. We'll show you how it works.",
+    "responsible": "Tom",
+    "capacity": 2,
+    "bookings": [
+      { "name": "Hana", "email": "hana@example.org" },
+      { "name": "Ivan", "email": "ivan@example.org" }
+    ]
+  },
+  {
+    "name": "Judges' runner",
+    "location": "Judges' Table",
+    "start": "2026-06-13T10:00:00",
+    "end": "2026-06-13T14:00:00",
+    "info": "Bringing score sheets from the judges to the score entry and drinks to the judges.",
+    "responsible": "Tom",
+    "capacity": 1,
+    "bookings": [
+      { "name": "Jonas", "email": "jonas@example.org" }
+    ]
+  },
+  {
+    "name": "Info desk: morning",
+    "location": "Registration",
+    "start": "2026-06-13T10:00:00",
+    "end": "2026-06-13T14:00:00",
+    "info": "Answering questions, selling programmes and collecting lost items.",
+    "responsible": "Mara",
+    "capacity": 2,
+    "minimum": 1,
+    "bookings": [
+      { "name": "Chiara", "email": "chiara@example.org" }
+    ]
+  },
+  {
+    "name": "Cake & coffee: lunch",
+    "location": "Cafeteria",
+    "start": "2026-06-13T11:30:00",
+    "end": "2026-06-13T14:30:00",
+    "info": "Lunch rush: selling sandwiches, cake and drinks.",
+    "responsible": "Paul",
+    "capacity": 4,
+    "minimum": 3,
+    "bookings": [
+      { "name": "Kim", "email": "kim@example.org" },
+      { "name": "Lena", "email": "lena@example.org" },
+      { "name": "Pia", "email": "pia@example.org" }
+    ]
+  },
+  {
+    "name": "Warm-up supervision: afternoon",
+    "location": "Warm-up Hall",
+    "start": "2026-06-13T12:30:00",
+    "end": "2026-06-13T17:00:00",
+    "info": "Keeping an eye on the warm-up trampolines and calling the next squad.",
+    "responsible": "Ruth",
+    "capacity": 2,
+    "minimum": 1
+  },
+  {
+    "name": "Spotting: afternoon",
+    "location": "Competition Hall",
+    "start": "2026-06-13T13:00:00",
+    "end": "2026-06-13T17:30:00",
+    "info": "Standing at the trampoline ends and pushing the safety mats. Experienced spotters only.",
+    "responsible": "Jo",
+    "capacity": 4,
+    "minimum": 4,
+    "bookings": [
+      { "name": "Ben", "email": "ben@example.org" },
+      { "name": "Omar", "email": "omar@example.org" }
+    ]
+  },
+  {
+    "name": "Score entry: afternoon",
+    "location": "Judges' Table",
+    "start": "2026-06-13T13:00:00",
+    "end": "2026-06-13T17:30:00",
+    "info": "Typing the judges' scores into the results software. We'll show you how it works.",
+    "responsible": "Tom",
+    "capacity": 2,
+    "minimum": 2,
+    "bookings": [
+      { "name": "Kim", "email": "kim@example.org" }
+    ]
+  },
+  {
+    "name": "Info desk: afternoon",
+    "location": "Registration",
+    "start": "2026-06-13T14:00:00",
+    "end": "2026-06-13T18:00:00",
+    "info": "Answering questions, selling programmes and collecting lost items.",
+    "responsible": "Mara",
+    "capacity": 2,
+    "minimum": 1
+  },
+  {
+    "name": "Cake & coffee: afternoon",
+    "location": "Cafeteria",
+    "start": "2026-06-13T14:30:00",
+    "end": "2026-06-13T18:00:00",
+    "info": "Making coffee and selling cake to parents and fans.",
+    "responsible": "Paul",
+    "capacity": 3,
+    "minimum": 2
+  },
+  {
+    "name": "Award ceremony",
+    "location": "Competition Hall",
+    "start": "2026-06-13T17:30:00",
+    "end": "2026-06-13T18:30:00",
+    "info": "Setting up the podium and handing medals and certificates to the presenters.",
+    "responsible": "Jo",
+    "capacity": 4,
+    "minimum": 2,
+    "bookings": [
+      { "name": "Pia", "email": "pia@example.org" }
+    ]
+  },
+  {
+    "name": "Spotting: finals",
+    "location": "Competition Hall",
+    "start": "2026-06-14T09:00:00",
+    "end": "2026-06-14T13:00:00",
+    "info": "Standing at the trampoline ends and pushing the safety mats. Experienced spotters only.",
+    "responsible": "Jo",
+    "capacity": 4,
+    "minimum": 4,
+    "bookings": [
+      { "name": "Anna", "email": "anna@example.org" }
+    ]
+  },
+  {
+    "name": "Teardown",
+    "location": "Competition Hall",
+    "start": "2026-06-14T13:00:00",
+    "end": "2026-06-14T16:00:00",
+    "info": "Folding the trampolines, stacking mats and a final cleanup round. Leftover cake for everyone!",
+    "responsible": "Jo",
+    "capacity": 12,
+    "minimum": 8,
+    "bookings": [
+      { "name": "Anna", "email": "anna@example.org" },
+      { "name": "David", "email": "david@example.org" },
+      { "name": "Finn", "email": "finn@example.org" },
+      { "name": "Pia", "email": "pia@example.org" }
+    ]
+  }
+]

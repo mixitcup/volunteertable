@@ -5,6 +5,22 @@ There are a few volunteer web tools, but we wanted something that is both very e
 
 It can also be used as a booking tool for other events.
 
+## Screenshots
+
+The following screenshots show an imaginary trampoline event (invented by Claude Code).
+
+![Timetable with shifts per location, the current time and the shifts you registered for](screenshots/timetable.png)
+
+| Events | Locations |
+|---|---|
+| ![Event list with registrations, minimum helpers and who's coming](screenshots/events.png) | ![Locations with directions and their shifts](screenshots/locations.png) |
+
+| My events | Admin |
+|---|---|
+| ![Your registrations, with calendar export](screenshots/my-events.png) | ![Admin tab with invitation link and everyone's registrations](screenshots/admin.png) |
+
+<img src="screenshots/phone.png" alt="Timetable on a phone" width="260">
+
 ## Setup
 
 The project has two folders:
@@ -33,6 +49,19 @@ php -S localhost:8000 -t public
 ```
 
 Then open http://localhost:8000/index.htm. The first visitor becomes admin and gets the invitation link for volunteers on the Admin tab.
+
+## Screenshots
+
+The screenshots above are generated from example data in `tools/screenshots/demo/` (a fictional one-weekend trampoline competition). The script starts a throwaway copy of the app with its own SQLite database in a temporary folder, registers an example volunteer for a few shifts and takes the screenshots with a headless browser, with the clock fixed to the competition's Saturday morning. Your `config.php` and database are not touched. It needs PHP and Node.js:
+
+```sh
+cd tools/screenshots
+npm ci
+npx playwright install chromium
+npm run screenshots
+```
+
+The images are written to `screenshots/`. Set `PHP=/path/to/php` if `php` is not on the path, or `PORT` if port 8790 is taken. Fonts come from the system, so the images can look slightly different on another computer.
 
 ## Translations
 
