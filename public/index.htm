@@ -1782,6 +1782,9 @@
        * ------------------------------------------------------------------ */
 
       function renderAll() {
+        // Texts of the "Now" and "Past" labels on event cards (drawn by the stylesheet).
+        document.documentElement.style.setProperty('--label-now', JSON.stringify(t('events.labelNow')));
+        document.documentElement.style.setProperty('--label-past', JSON.stringify(t('events.labelPast')));
         renderTimetable();
         var locationInfoIds = getLocationInfoIds();
         renderEventInfo(locationInfoIds);

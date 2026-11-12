@@ -36,7 +36,7 @@ const page = {
 const volunteer = { name: 'Alex', email: 'alex@example.org' };
 const admin = { name: 'Mara', email: 'mara@example.org' };
 // Shifts the example volunteer registers for (they show up yellow).
-const volunteerShifts = ['Athlete check-in', 'Spotting: afternoon', 'Cake & coffee: afternoon', 'Teardown'];
+const volunteerShifts = ['Hall setup', 'Score entry: morning', 'Award ceremony', 'Teardown'];
 
 // A copy of private/ with its own configuration, database and example data.
 function preparePrivateDir() {

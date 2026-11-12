@@ -67,6 +67,8 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'events.allOver': 'All events are over.',
   'events.none': 'There are no events yet.',
   'events.past': 'Past events ({n})',
+  'events.labelNow': 'Now',
+  'events.labelPast': 'Past',
   'events.missing': { one: '{n} more person needed (minimum {min})', other: '{n} more people needed (minimum {min})' },
   'events.minimumReached': 'minimum of {min} reached ✓',
   'events.registeredFull': '{registered} of {max} registered (full)',

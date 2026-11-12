@@ -65,6 +65,8 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'events.allOver': 'Alle Veranstaltungen sind vorbei.',
   'events.none': 'Es gibt noch keine Veranstaltungen.',
   'events.past': 'Vergangene Veranstaltungen ({n})',
+  'events.labelNow': 'Jetzt',
+  'events.labelPast': 'Vorbei',
   'events.missing': { one: 'noch {n} Person gesucht (Minimum {min})', other: 'noch {n} Personen gesucht (Minimum {min})' },
   'events.minimumReached': 'Minimum von {min} erreicht ✓',
   'events.registeredFull': '{registered} von {max} angemeldet (voll)',

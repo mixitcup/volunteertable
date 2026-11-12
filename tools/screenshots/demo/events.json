@@ -81,7 +81,7 @@
     "end": "2026-06-13T13:00:00",
     "info": "Typing the judges' scores into the results software. We'll show you how it works.",
     "responsible": "Tom",
-    "capacity": 2,
+    "capacity": 3,
     "bookings": [
       { "name": "Hana", "email": "hana@example.org" },
       { "name": "Ivan", "email": "ivan@example.org" }

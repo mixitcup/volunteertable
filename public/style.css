@@ -416,8 +416,12 @@ a {
   text-decoration-color: rgba(0, 0, 0, 0.3);
 }
 
+/* "Now" and "Past" labels, on the Events tab and on "My events". The texts come
+   from the translations (set by the page script as --label-now and --label-past). */
 .event-info-list article.is-past h2::after,
-.event-info-list article.is-current h2::after {
+.event-info-list article.is-current h2::after,
+.my-event-list article.is-past h2::after,
+.my-event-list article.is-current h2::after {
   display: inline-block;
   margin-left: 8px;
   padding: 1px 6px;
@@ -428,14 +432,16 @@ a {
   vertical-align: middle;
 }
 
-.event-info-list article.is-past h2::after {
-  content: 'Past';
+.event-info-list article.is-past h2::after,
+.my-event-list article.is-past h2::after {
+  content: var(--label-past, 'Past');
   background-color: #E5E5E5;
   color: #666;
 }
 
-.event-info-list article.is-current h2::after {
-  content: 'Now';
+.event-info-list article.is-current h2::after,
+.my-event-list article.is-current h2::after {
+  content: var(--label-now, 'Now');
   background-color: #D32F2F;
   color: white;
 }
