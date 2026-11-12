@@ -411,10 +411,6 @@ a {
   color: #999;
 }
 
-.event-info-list article.is-past h2 {
-  text-decoration: line-through;
-  text-decoration-color: rgba(0, 0, 0, 0.3);
-}
 
 /* "Now" and "Past" labels, on the Events tab and on "My events". The texts come
    from the translations (set by the page script as --label-now and --label-past). */
@@ -1019,10 +1015,6 @@ a:hover {
 .my-event-list article.is-past {
   background-color: var(--card-muted);
   box-shadow: none;
-}
-
-.event-info-list article.is-past h2 {
-  text-decoration-thickness: 1px;
 }
 
 /* "My events" cards keep a coloured edge for upcoming events. */

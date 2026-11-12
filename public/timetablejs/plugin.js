@@ -33,6 +33,10 @@ Timetable.HOUR_WIDTH_NARROW = 72;
 // Height of one lane in a location's row, in pixels (matches plugin.css). Events
 // that overlap in time at the same location are shown in lanes below each other.
 Timetable.ROW_HEIGHT = 46;
+// Name next to events too short to show it (see appendOverflowLabel): distance
+// to the event, and the gap between name and count inside events (as in plugin.css).
+Timetable.OVERFLOW_MARGIN = 6;
+Timetable.OVERFLOW_GAP = 6;
 Timetable.NARROW_SCREEN = '(max-width: 600px)';
 // How often the current-time line and past/current markers are refreshed.
 Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
@@ -539,12 +543,90 @@ Timetable.text = function(key, params) {
 				}
 			}
 			function appendLocationEvents(location, node) {
+				var drawn = [];
 				for (var k=0; k<timetable.events.length; k++) {
 					var event = timetable.events[k];
 					if (event.location === location) {
-						appendEvent(event, node, lanes.laneByEvent[k]);
+						drawn.push({ event: event, lane: lanes.laneByEvent[k], node: appendEvent(event, node, lanes.laneByEvent[k]) });
 					}
 				}
+				drawn.forEach(function(entry) {
+					appendOverflowLabel(entry, drawn, node);
+				});
+			}
+			/*
+			 * An event too short to show its whole name gets the name next to it, if the
+			 * space there is free: to the right of the event, otherwise to the left of it.
+			 * The count stays in the event only (it takes its room first, so it is shown
+			 * there whenever the name is shortened).
+			 */
+			function appendOverflowLabel(entry, drawn, rowNode) {
+				var eventNode = entry.node;
+				var nameNode = eventNode.querySelector('.time-entry-name');
+				var countNode = eventNode.querySelector('.registration-count');
+				var isMine = eventNode.classList.contains('is-mine');
+				var textWidth = measureText(entry.event.name, fontOf(nameNode)) +
+					(isMine ? measureText('✓ ', fontOf(nameNode, '700')) : 0);
+				var countWidth = countNode !== null ?
+					Timetable.OVERFLOW_GAP + measureText(countNode.textContent, fontOf(countNode)) : 0;
+				var start = layout.positionOf(entry.event.startDate);
+				var end = layout.positionOf(entry.event.endDate);
+				// Padding (10px each side), border and a little slack for rounding.
+				if (textWidth + countWidth + 24 <= end - start) {
+					return;
+				}
+
+				// Free space up to the neighbouring events in the same lane.
+				var freeLeft = start;
+				var freeRight = layout.width - end;
+				drawn.forEach(function(other) {
+					if (other === entry || other.lane !== entry.lane) {
+						return;
+					}
+					var otherStart = layout.positionOf(other.event.startDate);
+					var otherEnd = layout.positionOf(other.event.endDate);
+					if (otherStart >= end) {
+						freeRight = Math.min(freeRight, otherStart - end);
+					} else if (otherEnd <= start) {
+						freeLeft = Math.min(freeLeft, start - otherEnd);
+					}
+				});
+				var needed = textWidth + 2 * Timetable.OVERFLOW_MARGIN + 4;
+				var side = freeRight >= needed ? 'right' : freeLeft >= needed ? 'left' : null;
+				if (side === null) {
+					return;
+				}
+
+				var labelNode = rowNode.appendChild(document.createElement('span'));
+				labelNode.className = 'time-entry-overflow is-' + side +
+					(isMine ? ' is-mine' : '') +
+					(eventNode.classList.contains('has-registration') ? ' has-registration' : '');
+				labelNode.setAttribute('aria-hidden', 'true');
+				labelNode.title = eventNode.title;
+				labelNode.style.top = entry.lane * Timetable.ROW_HEIGHT + 'px';
+				if (side === 'right') {
+					labelNode.style.left = end + Timetable.OVERFLOW_MARGIN + 'px';
+				} else {
+					labelNode.style.right = layout.width - start + Timetable.OVERFLOW_MARGIN + 'px';
+				}
+				labelNode.appendChild(document.createElement('span')).textContent = entry.event.name;
+				// Clicking the copy does the same as clicking the event.
+				labelNode.addEventListener('click', function() {
+					eventNode.click();
+				});
+				trackEventNode(entry.event, labelNode);
+			}
+			// The font of a node as a canvas font string, optionally with another weight.
+			// Works while the timetable is hidden, as no layout is needed.
+			function fontOf(node, weight) {
+				var style = window.getComputedStyle(node);
+				return style.fontStyle + ' ' + (weight || style.fontWeight) + ' ' + style.fontSize + ' ' + style.fontFamily;
+			}
+			function measureText(text, font) {
+				var context = measureText.context ||
+					(measureText.context = document.createElement('canvas').getContext('2d'));
+				context.font = font;
+				return Math.ceil(context.measureText(text).width);
 			}
 			function appendEvent(event, node, lane) {
 				var hasOptions = event.options !== undefined;
@@ -604,6 +686,7 @@ Timetable.text = function(key, params) {
 				if (hasCapacity || (hasOptions && hasMinimum(event) && typeof event.options.registered === 'number')) {
 					appendRegistrationCount(event, eventNode, smallNode);
 				}
+				return eventNode;
 			}
 			// "5/15", with the minimum if there is one: "5/15 · min 5" (or "2 · min 5" without a maximum).
 			function appendRegistrationCount(event, eventNode, smallNode) {

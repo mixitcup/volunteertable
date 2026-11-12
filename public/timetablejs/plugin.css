@@ -479,8 +479,6 @@
   background-color: #D6D6D6;
   border-color: #B0B0B0;
   color: #555;
-  text-decoration: line-through;
-  text-decoration-color: rgba(0, 0, 0, 0.35);
 }
 
 .timetable .time-entry.is-past:hover {
@@ -506,7 +504,6 @@
 
 .location-event-list li.is-past a {
   color: #999;
-  text-decoration: line-through;
 }
 
 .location-event-list li.is-current {
@@ -518,4 +515,42 @@
 .timetable ul.room-timeline li.has-overlaps {
   background-image: repeating-linear-gradient(to bottom,
     transparent 0, transparent 45px, rgba(0, 0, 0, 0.06) 45px, rgba(0, 0, 0, 0.06) 46px);
+}
+
+/* The name of an event too short to show it, repeated next to the event
+   (see appendOverflowLabel in plugin.js). Grey text without a box, so it doesn't
+   look like an event itself. Same font and position as the name in the event. */
+.timetable .time-entry-overflow {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 45px;
+  color: #6B6B6B;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Events with a fill bar have their top line at the top. */
+.timetable .time-entry-overflow.has-registration {
+  align-items: flex-start;
+  padding-top: 5px;
+  box-sizing: border-box;
+}
+
+.timetable .time-entry-overflow.is-mine > :first-child::before {
+  content: '✓ ';
+  font-weight: 700;
+}
+
+.timetable .time-entry-overflow:hover {
+  color: #333;
+}
+
+.timetable .time-entry-overflow.is-past {
+  color: #999;
 }
