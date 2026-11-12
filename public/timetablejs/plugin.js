@@ -710,6 +710,15 @@ Timetable.text = function(key, params) {
 					labelNode.style.right = layout.width - start + Timetable.OVERFLOW_MARGIN + 'px';
 				}
 				labelNode.appendChild(document.createElement('span')).textContent = entry.event.name;
+				// While the event is open at full width (hover or focus), it shows the name
+				// itself, so the copy fades out instead of peeking out behind it.
+				var setOpen = function(isOpen) {
+					labelNode.classList.toggle('is-hidden', isOpen);
+				};
+				eventNode.addEventListener('mouseenter', function() { setOpen(true); });
+				eventNode.addEventListener('mouseleave', function() { setOpen(eventNode.matches(':focus-visible')); });
+				eventNode.addEventListener('focus', function() { setOpen(eventNode.matches(':focus-visible')); });
+				eventNode.addEventListener('blur', function() { setOpen(eventNode.matches(':hover')); });
 				trackEventNode(entry.event, labelNode);
 			}
 			/*
@@ -719,9 +728,22 @@ Timetable.text = function(key, params) {
 			 * the left, so it widens towards the left.
 			 */
 			function markOverflowing(eventNode, fullWidth, shift) {
+				shift = Math.max(shift, -layout.width);
 				eventNode.classList.add('is-overflowing');
 				eventNode.style.setProperty('--full-width', fullWidth + 'px');
-				eventNode.style.setProperty('--full-shift', Math.max(shift, -layout.width) + 'px');
+				eventNode.style.setProperty('--full-shift', shift + 'px');
+				// The part beyond the event's real time is marked while open (inside the
+				// border, which is 1px): on the left if it widens to the left, else on the right.
+				var width = parseFloat(eventNode.style.width);
+				var extra = Math.max(fullWidth - width, 0);
+				if (shift < 0) {
+					eventNode.classList.add('is-growing-left');
+					eventNode.style.setProperty('--beyond-start', '0px');
+					eventNode.style.setProperty('--beyond-width', Math.max(-shift - 1, 0) + 'px');
+				} else {
+					eventNode.style.setProperty('--beyond-start', Math.max(width - 1, 0) + 'px');
+					eventNode.style.setProperty('--beyond-width', extra + 'px');
+				}
 			}
 			// The font of a node as a canvas font string, optionally with another weight.
 			// Works while the timetable is hidden, as no layout is needed.

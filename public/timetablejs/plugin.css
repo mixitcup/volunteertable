@@ -549,6 +549,15 @@
   pointer-events: none;
 }
 
+/* Hidden while its event is open at full width. */
+.timetable .time-entry-overflow.is-hidden {
+  opacity: 0;
+}
+
+.timetable .time-entry-overflow {
+  transition: opacity 150ms;
+}
+
 /* Events with a fill bar have their top line at the top. */
 .timetable .time-entry-overflow.has-registration {
   align-items: flex-start;
@@ -613,6 +622,39 @@
     box-shadow 200ms ease-out 80ms, z-index 0s;
 }
 
+/* While open, the part beyond the event's real start and end is striped, with a
+   dashed line where the event really ends (or starts), so its time stays visible.
+   Drawn behind the text (z-index -1 within the event). */
+.timetable .time-entry.is-overflowing::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: var(--beyond-start, 0px);
+  width: var(--beyond-width, 0px);
+  box-sizing: border-box;
+  /* Slightly lighter, with faint light stripes: readable under white and dark text. */
+  border-left: 2px dashed rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12) repeating-linear-gradient(135deg,
+    rgba(255, 255, 255, 0.16) 0, rgba(255, 255, 255, 0.16) 3px,
+    transparent 3px, transparent 9px);
+  opacity: 0;
+  transition: opacity 150ms;
+  pointer-events: none;
+}
+
+.timetable .time-entry.is-overflowing.is-growing-left::before {
+  border-left: none;
+  border-right: 2px dashed rgba(255, 255, 255, 0.7);
+}
+
+.timetable .time-entry.is-overflowing:hover::before,
+.timetable .time-entry.is-overflowing:focus-visible::before {
+  opacity: 1;
+  transition: opacity 200ms ease-out 80ms;
+}
+
 /* The name on one line while open; "…" while the event is still growing. */
 .timetable .time-entry.is-overflowing:hover .time-entry-name,
 .timetable .time-entry.is-overflowing:focus-visible .time-entry-name {
@@ -625,7 +667,9 @@
 @media (prefers-reduced-motion: reduce) {
   .timetable .time-entry.is-overflowing,
   .timetable .time-entry.is-overflowing:hover,
-  .timetable .time-entry.is-overflowing:focus-visible {
+  .timetable .time-entry.is-overflowing:focus-visible,
+  .timetable .time-entry.is-overflowing::before,
+  .timetable .time-entry.is-overflowing:hover::before {
     transition: none;
   }
 }
