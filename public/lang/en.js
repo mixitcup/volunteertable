@@ -112,6 +112,9 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'confirmation.mailFailed': 'We could not send this link by email, so please save it now.',
   'confirmation.mailSkipped': 'No new email this time: the personal link we sent to {email} earlier already shows all your registrations, including this one.',
   'confirmation.mailNewBrowser': 'This browser doesn’t show your other registrations yet. We sent your personal link to {email}: open it here to see all of them.',
+  // Page footer
+  'footer.github': 'VolunteerTable: A Mix it Cup trampoline project, Open Source on GitHub <3',
+
   // Saving an event to the calendar
   'calendar.add': 'Add to calendar',
   'calendar.google': 'Google Calendar',

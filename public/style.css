@@ -1405,3 +1405,52 @@ body {
     padding-top: 28px;
   }
 }
+
+/* Page footer with the link to the project. Sticky: at the bottom of the window when
+   the page is short, after the content when it is long. The body fills at least the
+   window height (minus its 8px top and bottom margins) and keeps room at its bottom,
+   where the footer is placed. */
+body {
+  box-sizing: border-box;
+  min-height: calc(100vh - 16px);
+  min-height: calc(100dvh - 16px);
+  padding-bottom: var(--footer-height);
+  --footer-height: 76px;
+}
+
+.page-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--footer-height);
+  box-sizing: border-box;
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+/* The line above the footer, with at least 32px space to the content. */
+.page-footer::before {
+  content: '';
+  display: block;
+  margin: 32px 0 12px;
+  border-top: 1px solid var(--border);
+}
+
+.page-footer a {
+  color: inherit;
+}
+
+.page-footer a:hover,
+.page-footer a:focus-visible {
+  color: var(--accent-dark);
+  text-decoration: underline;
+}
+
+/* On phones the footer text may wrap onto two lines. */
+@media (max-width: 600px) {
+  body {
+    --footer-height: 96px;
+  }
+}
