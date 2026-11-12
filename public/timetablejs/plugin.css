@@ -382,7 +382,8 @@
 }
 
 /* Top line: name and, if known, the count ("5/15 · min 5") side by side.
-   The count takes the room it needs; a long name is shortened with "…". */
+   The count takes the room it needs; a long name is shortened with "…"
+   (also without a count, where it would otherwise wrap and be cut off). */
 .timetable .time-entry small {
   display: flex;
   align-items: baseline;
@@ -392,12 +393,20 @@
 .timetable .time-entry .time-entry-name {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.timetable .time-entry.has-count .time-entry-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Without a fill bar there is room for two lines; longer names end with "…"
+   (Timetable.NAME_LINES in plugin.js must match). */
+.timetable .time-entry:not(.has-registration) .time-entry-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* With a fill bar, the top line moves up to make room for it. */

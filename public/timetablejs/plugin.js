@@ -40,6 +40,8 @@ Timetable.ROW_HEIGHT = 46;
 // to the event, and the gap between name and count inside events (as in plugin.css).
 Timetable.OVERFLOW_MARGIN = 6;
 Timetable.OVERFLOW_GAP = 6;
+// Lines an event name may take: one above a fill bar, otherwise two (as in plugin.css).
+Timetable.NAME_LINES = { withBar: 1, withoutBar: 2 };
 // Selecting a time span by dragging snaps to this step.
 Timetable.SELECT_STEP_MINUTES = 15;
 Timetable.NARROW_SCREEN = '(max-width: 600px)';
@@ -651,14 +653,19 @@ Timetable.text = function(key, params) {
 				var nameNode = eventNode.querySelector('.time-entry-name');
 				var countNode = eventNode.querySelector('.registration-count');
 				var isMine = eventNode.classList.contains('is-mine');
-				var textWidth = measureText(entry.event.name, fontOf(nameNode)) +
+				var nameFont = fontOf(nameNode);
+				var textWidth = measureText(entry.event.name, nameFont) +
 					(isMine ? measureText('✓ ', fontOf(nameNode, '700')) : 0);
-				var countWidth = countNode !== null ?
-					Timetable.OVERFLOW_GAP + measureText(countNode.textContent, fontOf(countNode)) : 0;
 				var start = layout.positionOf(entry.event.startDate);
 				var end = layout.positionOf(entry.event.endDate);
-				// Padding (10px each side), border and a little slack for rounding.
-				if (textWidth + countWidth + 24 <= end - start) {
+				// Room for the name: without padding (10px each side), border, a little slack
+				// for rounding, and what the check mark and the count take beside it.
+				var nameRoom = end - start - 24 -
+					(isMine ? measureText('✓', fontOf(nameNode, '700')) + Timetable.OVERFLOW_GAP : 0) -
+					(countNode !== null ? Timetable.OVERFLOW_GAP + measureText(countNode.textContent, fontOf(countNode)) : 0);
+				var maxLines = eventNode.classList.contains('has-registration') ?
+					Timetable.NAME_LINES.withBar : Timetable.NAME_LINES.withoutBar;
+				if (nameRoom > 0 && linesNeeded(entry.event.name, nameFont, nameRoom) <= maxLines) {
 					return;
 				}
 
@@ -707,6 +714,24 @@ Timetable.text = function(key, params) {
 			function fontOf(node, weight) {
 				var style = window.getComputedStyle(node);
 				return style.fontStyle + ' ' + (weight || style.fontWeight) + ' ' + style.fontSize + ' ' + style.fontFamily;
+			}
+			// Lines a text takes when wrapped at spaces to the given width (words longer
+			// than a line are broken, like overflow-wrap: anywhere in plugin.css).
+			function linesNeeded(text, font, width) {
+				var spaceWidth = measureText(' ', font);
+				var lines = 0;
+				var lineWidth = width;
+				text.split(/\s+/).filter(Boolean).forEach(function(word) {
+					var wordWidth = measureText(word, font);
+					if (lines > 0 && lineWidth + spaceWidth + wordWidth <= width) {
+						lineWidth += spaceWidth + wordWidth;
+						return;
+					}
+					var wordLines = Math.max(1, Math.ceil(wordWidth / width));
+					lines += wordLines;
+					lineWidth = wordWidth - (wordLines - 1) * width;
+				});
+				return Math.max(lines, 1);
 			}
 			function measureText(text, font) {
 				var context = measureText.context ||
