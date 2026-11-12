@@ -580,7 +580,7 @@ Timetable.text = function(key, params) {
 
 				rowNode.classList.add('is-selectable');
 				rowNode.addEventListener('pointerdown', function(e) {
-					var onEvent = e.target.closest && e.target.closest('.time-entry, .time-entry-overflow');
+					var onEvent = e.target.closest && e.target.closest('.time-entry');
 					if (e.pointerType === 'touch' || e.button !== 0 || onEvent) {
 						return;
 					}
@@ -647,6 +647,7 @@ Timetable.text = function(key, params) {
 			 * space there is free: to the right of the event, otherwise to the left of it.
 			 * The count stays in the event only (it takes its room first, so it is shown
 			 * there whenever the name is shortened).
+			 * It also widens to its full size while hovered (see markOverflowing).
 			 */
 			function appendOverflowLabel(entry, drawn, rowNode) {
 				var eventNode = entry.node;
@@ -686,6 +687,12 @@ Timetable.text = function(key, params) {
 				});
 				var needed = textWidth + 2 * Timetable.OVERFLOW_MARGIN + 4;
 				var side = freeRight >= needed ? 'right' : freeLeft >= needed ? 'left' : null;
+
+				// Full width: the name on one line, plus check mark, count, padding and border.
+				var fullWidth = Math.ceil(end - start - nameRoom + measureText(entry.event.name, nameFont)) + 2;
+				// Widen towards the free side; to the left if there is no room on the right.
+				var growLeft = side === 'left' || (side === null && start + fullWidth > layout.width);
+				markOverflowing(eventNode, fullWidth, growLeft ? Math.min(end - start - fullWidth, 0) : 0);
 				if (side === null) {
 					return;
 				}
@@ -694,8 +701,8 @@ Timetable.text = function(key, params) {
 				labelNode.className = 'time-entry-overflow is-' + side +
 					(isMine ? ' is-mine' : '') +
 					(eventNode.classList.contains('has-registration') ? ' has-registration' : '');
+				// Only a reading aid: not clickable, so dragging a new event works across it.
 				labelNode.setAttribute('aria-hidden', 'true');
-				labelNode.title = eventNode.title;
 				labelNode.style.top = entry.lane * Timetable.ROW_HEIGHT + 'px';
 				if (side === 'right') {
 					labelNode.style.left = end + Timetable.OVERFLOW_MARGIN + 'px';
@@ -703,11 +710,18 @@ Timetable.text = function(key, params) {
 					labelNode.style.right = layout.width - start + Timetable.OVERFLOW_MARGIN + 'px';
 				}
 				labelNode.appendChild(document.createElement('span')).textContent = entry.event.name;
-				// Clicking the copy does the same as clicking the event.
-				labelNode.addEventListener('click', function() {
-					eventNode.click();
-				});
 				trackEventNode(entry.event, labelNode);
+			}
+			/*
+			 * While hovered (or focused), an event too short for its content is shown at
+			 * full width in place, above everything else and with a shadow, so it is
+			 * clearly an overlay (see .is-overflowing in plugin.css). shift moves it to
+			 * the left, so it widens towards the left.
+			 */
+			function markOverflowing(eventNode, fullWidth, shift) {
+				eventNode.classList.add('is-overflowing');
+				eventNode.style.setProperty('--full-width', fullWidth + 'px');
+				eventNode.style.setProperty('--full-shift', Math.max(shift, -layout.width) + 'px');
 			}
 			// The font of a node as a canvas font string, optionally with another weight.
 			// Works while the timetable is hidden, as no layout is needed.

@@ -545,7 +545,8 @@
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
-  cursor: pointer;
+  /* Not interactive: clicks and drags go to the row below (e.g. to add an event). */
+  pointer-events: none;
 }
 
 /* Events with a fill bar have their top line at the top. */
@@ -558,10 +559,6 @@
 .timetable .time-entry-overflow.is-mine > :first-child::before {
   content: '✓ ';
   font-weight: 700;
-}
-
-.timetable .time-entry-overflow:hover {
-  color: #333;
 }
 
 .timetable .time-entry-overflow.is-past {
@@ -593,4 +590,42 @@
   font-weight: 700;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* An event too short for its content, while hovered or focused: shown at full width
+   in place (widening to the left if --full-shift is set), lifted above the timeline
+   with a shadow and a white outline, so it is clearly an overlay and not a longer event.
+   It opens smoothly after a short pause (so moving the mouse across the timeline doesn't
+   make events flicker) and closes smoothly, staying on top until it is small again. */
+.timetable .time-entry.is-overflowing {
+  margin-left: 0;
+  transition: background-color 200ms, width 200ms ease-out, margin-left 200ms ease-out,
+    box-shadow 200ms ease-out, z-index 0s linear 200ms;
+}
+
+.timetable .time-entry.is-overflowing:hover,
+.timetable .time-entry.is-overflowing:focus-visible {
+  z-index: 6;
+  width: var(--full-width) !important;
+  margin-left: var(--full-shift, 0px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 4px 14px rgba(0, 0, 0, 0.22);
+  transition: background-color 200ms, width 200ms ease-out 80ms, margin-left 200ms ease-out 80ms,
+    box-shadow 200ms ease-out 80ms, z-index 0s;
+}
+
+/* The name on one line while open; "…" while the event is still growing. */
+.timetable .time-entry.is-overflowing:hover .time-entry-name,
+.timetable .time-entry.is-overflowing:focus-visible .time-entry-name {
+  display: block;
+  -webkit-line-clamp: none;
+  line-clamp: none;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timetable .time-entry.is-overflowing,
+  .timetable .time-entry.is-overflowing:hover,
+  .timetable .time-entry.is-overflowing:focus-visible {
+    transition: none;
+  }
 }
