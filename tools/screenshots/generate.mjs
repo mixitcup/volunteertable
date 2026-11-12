@@ -104,6 +104,7 @@ async function newContext(browser, options = {}) {
   return context;
 }
 
+// Always exactly one screen (the context's viewport), like seen on a laptop or phone.
 async function screenshot(context, name, hash, options = {}) {
   const tab = await context.newPage();
   await tab.goto(baseUrl + 'index.htm' + hash);
@@ -114,7 +115,7 @@ async function screenshot(context, name, hash, options = {}) {
     await options.before(tab);
   }
   await tab.waitForTimeout(300);
-  await tab.screenshot({ path: join(outDir, name + '.png'), fullPage: Boolean(options.fullPage) });
+  await tab.screenshot({ path: join(outDir, name + '.png') });
   await tab.close();
   console.log('screenshots/' + name + '.png');
 }
@@ -149,8 +150,8 @@ try {
 
   await screenshot(volunteerContext, 'timetable', '#timetable-tab');
   await screenshot(volunteerContext, 'events', '#events-tab');
-  await screenshot(volunteerContext, 'my-events', '#my-events-tab', { fullPage: true });
-  await screenshot(volunteerContext, 'locations', '#locations-tab', { fullPage: true });
+  await screenshot(volunteerContext, 'my-events', '#my-events-tab');
+  await screenshot(volunteerContext, 'locations', '#locations-tab');
   await screenshot(adminContext, 'admin', '#admin-tab');
 
   // The same volunteer on a phone.

@@ -831,9 +831,11 @@ body.no-access .tab-panel {
     display: none;
   }
 
+  /* Tabs share the width (four fit on a 390px phone); if they don't fit, the row scrolls. */
   .tabs a {
-    flex: none;
-    padding: 12px 12px;
+    flex: 1 0 auto;
+    padding: 12px 8px;
+    text-align: center;
     white-space: nowrap;
   }
 
