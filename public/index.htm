@@ -75,6 +75,7 @@
         <li><span class="legend-swatch is-mine"></span><span data-i18n="legend.mine">You’re registered</span></li>
         <li><span class="legend-swatch is-past"></span><span data-i18n="legend.over">Over</span></li>
       </ul>
+      <p class="hint" id="timetable-admin-hint" hidden data-i18n="timetable.adminDragHint">Admin: drag with the mouse across a row to add an event there.</p>
     </section>
 
     <section id="locations-tab" class="tab-panel" role="tabpanel" hidden>
@@ -379,6 +380,13 @@
             class: findMyBooking(event.id) ? 'is-mine' : undefined
           });
         });
+
+        // Admins can drag across a row to add an event there.
+        timetable.setRangeSelectHandler(admin === null ? null : function(locationName, start, end) {
+          var location = data.locations.filter(function(candidate) { return candidate.name === locationName; })[0];
+          openEventEditor(null, { locationId: location ? location.id : null, start: start, end: end });
+        });
+        document.getElementById('timetable-admin-hint').hidden = admin === null;
 
         // Reuse the renderer (it owns the current-time timer) and keep the scroll position.
         var scrollLeft = null;
@@ -1283,7 +1291,8 @@
         return value ? value.slice(0, 16) : '';
       }
 
-      function openEventEditor(event) {
+      // preset (new events only): { locationId, start, end }, e.g. from dragging on the timetable.
+      function openEventEditor(event, preset) {
         if (data.locations.length === 0) {
           showNotice(t('editor.addLocationFirst'), true);
           return;
@@ -1293,6 +1302,13 @@
         var start = new Date();
         start.setMinutes(0, 0, 0);
         start.setHours(start.getHours() + 1);
+        var end = new Date(start.getTime() + 3600000);
+        var locationId = data.locations[0].id;
+        if (preset) {
+          start = preset.start;
+          end = preset.end;
+          locationId = preset.locationId || locationId;
+        }
         var pad = function(n) { return (n < 10 ? '0' : '') + n; };
         var local = function(d) {
           return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' +
@@ -1325,13 +1341,13 @@
           { key: 'name', label: t('common.name'), required: true, value: isNew ? '' : event.name },
           {
             key: 'locationId', label: t('field.location'), type: 'select', required: true,
-            value: isNew ? data.locations[0].id : event.locationId,
+            value: isNew ? locationId : event.locationId,
             options: data.locations.map(function(location) { return { value: location.id, label: location.name }; })
           },
           { key: 'start', label: t('field.start'), type: 'datetime-local', required: true,
             value: isNew ? local(start) : toInputDateTime(event.start) },
           { key: 'end', label: t('field.end'), type: 'datetime-local', required: true,
-            value: isNew ? local(new Date(start.getTime() + 3600000)) : toInputDateTime(event.end) },
+            value: isNew ? local(end) : toInputDateTime(event.end) },
           { key: 'minimum', label: t('field.minimum'), type: 'number',
             value: isNew ? '' : event.minimum, hint: t('field.minimumHint') },
           { key: 'capacity', label: t('field.capacity'), type: 'number',

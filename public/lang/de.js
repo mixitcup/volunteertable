@@ -112,6 +112,9 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'confirmation.mailFailed': 'Wir konnten den Link nicht per E-Mail schicken, bitte speichere ihn jetzt.',
   'confirmation.mailSkipped': 'Diesmal keine neue E-Mail: Der persönliche Link, den wir dir an {email} geschickt haben, zeigt schon alle deine Anmeldungen, auch diese.',
   'confirmation.mailNewBrowser': 'Dieser Browser zeigt deine anderen Anmeldungen noch nicht an. Wir haben dir deinen persönlichen Link an {email} geschickt: Öffne ihn hier, dann siehst du alle.',
+  // Timetable, for admins
+  'timetable.adminDragHint': 'Admin: Zieh mit der Maus über eine Zeile, um dort eine Veranstaltung anzulegen.',
+
   // Page footer
   'footer.github': 'VolunteerTable: Ein Mix it Cup Trampolin-Projekt, Open Source auf GitHub <3',
 

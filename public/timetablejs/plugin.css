@@ -554,3 +554,30 @@
 .timetable .time-entry-overflow.is-past {
   color: #999;
 }
+
+/* Selecting a time span by dragging (see setRangeSelectHandler in plugin.js). */
+.timetable ul.room-timeline li.is-selectable {
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.timetable .range-selection {
+  position: absolute;
+  z-index: 4;
+  top: 2px;
+  bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2px dashed #C2392B;
+  border-radius: 5px;
+  background-color: rgba(236, 106, 94, 0.15);
+  color: #8F2A20;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}

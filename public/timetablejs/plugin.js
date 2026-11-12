@@ -13,6 +13,9 @@ var Timetable = function() {
 	this.locationInfoContainer = undefined;
 	this.locale = 'en-GB';
 	this.events = [];
+	// Called as handler(location, start, end) when a time span is dragged in a row
+	// (see setRangeSelectHandler); null: dragging does nothing.
+	this.rangeSelectHandler = null;
 };
 
 Timetable.Renderer = function(tt) {
@@ -37,6 +40,8 @@ Timetable.ROW_HEIGHT = 46;
 // to the event, and the gap between name and count inside events (as in plugin.css).
 Timetable.OVERFLOW_MARGIN = 6;
 Timetable.OVERFLOW_GAP = 6;
+// Selecting a time span by dragging snaps to this step.
+Timetable.SELECT_STEP_MINUTES = 15;
 Timetable.NARROW_SCREEN = '(max-width: 600px)';
 // How often the current-time line and past/current markers are refreshed.
 Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
@@ -156,6 +161,14 @@ Timetable.text = function(key, params) {
 				var hoursIntoDay = Math.min((date - dayStart) / 3600000, scopeHours);
 				return index * dayWidth + hoursIntoDay * hourWidth;
 			},
+			// The point in time at a horizontal position (the opposite of positionOf).
+			timeAt: function(x) {
+				var index = Math.max(0, Math.min(Math.floor(x / dayWidth), days.length - 1));
+				var minutes = Math.round(Math.max(0, Math.min(x - index * dayWidth, dayWidth)) / hourWidth * 60);
+				var date = new Date(days[index].getTime());
+				date.setMinutes(date.getMinutes() + minutes);
+				return date;
+			},
 			isInRange: function(date) {
 				var start = days[0];
 				var end = new Date(days[days.length - 1].getTime() + scopeHours * 3600000);
@@ -214,6 +227,12 @@ Timetable.text = function(key, params) {
 			};
 
 			return this;
+		},
+		// Lets the user drag with the mouse across a row to select a time span
+		// (snapped to Timetable.SELECT_STEP_MINUTES); handler(location, start, end)
+		// is called when the mouse is released. null switches it off.
+		setRangeSelectHandler: function(handler) {
+			this.rangeSelectHandler = typeof handler === 'function' ? handler : null;
 		},
 		setLocationInfoContainer: function(selector) {
 			if (typeof selector !== 'string' || selector === '') {
@@ -540,6 +559,73 @@ Timetable.text = function(key, params) {
 						liNode.classList.add('has-overlaps');
 					}
 					appendLocationEvents(timetable.locations[k], liNode);
+					if (timetable.rangeSelectHandler !== null) {
+						enableRangeSelect(timetable.locations[k], liNode);
+					}
+				}
+			}
+			/*
+			 * Dragging with the mouse across empty space in a row selects a time span,
+			 * shown while dragging and snapped to whole steps (e.g. 15 minutes). Touch
+			 * input is left alone, so the timeline can still be scrolled on phones.
+			 */
+			function enableRangeSelect(location, rowNode) {
+				var stepWidth = layout.hourWidth * Timetable.SELECT_STEP_MINUTES / 60;
+				var snap = function(x) {
+					return Math.max(0, Math.min(Math.round(x / stepWidth) * stepWidth, layout.width));
+				};
+				var drag = null;
+
+				rowNode.classList.add('is-selectable');
+				rowNode.addEventListener('pointerdown', function(e) {
+					var onEvent = e.target.closest && e.target.closest('.time-entry, .time-entry-overflow');
+					if (e.pointerType === 'touch' || e.button !== 0 || onEvent) {
+						return;
+					}
+					e.preventDefault();
+					var x = e.clientX - rowNode.getBoundingClientRect().left;
+					drag = { from: x, to: x, node: rowNode.appendChild(document.createElement('span')) };
+					drag.node.className = 'range-selection';
+					drag.node.hidden = true;
+					rowNode.setPointerCapture(e.pointerId);
+				});
+				rowNode.addEventListener('pointermove', function(e) {
+					if (drag === null) {
+						return;
+					}
+					drag.to = e.clientX - rowNode.getBoundingClientRect().left;
+					var span = selectedSpan();
+					drag.node.hidden = span === null;
+					if (span !== null) {
+						drag.node.style.left = span.left + 'px';
+						drag.node.style.width = span.right - span.left + 'px';
+						drag.node.textContent = prettyFormatTime(span.start, timetable.usingTwelveHour) + ' – ' +
+							prettyFormatTime(span.end, timetable.usingTwelveHour);
+					}
+				});
+				var finish = function(e) {
+					if (drag === null) {
+						return;
+					}
+					var span = e.type === 'pointerup' ? selectedSpan() : null;
+					rowNode.removeChild(drag.node);
+					drag = null;
+					// A click without dragging selects nothing.
+					if (span !== null) {
+						timetable.rangeSelectHandler(location, span.start, span.end);
+					}
+				};
+				rowNode.addEventListener('pointerup', finish);
+				rowNode.addEventListener('pointercancel', finish);
+
+				// The dragged span, snapped; null if it is shorter than one step.
+				function selectedSpan() {
+					var left = snap(Math.min(drag.from, drag.to));
+					var right = snap(Math.max(drag.from, drag.to));
+					if (right - left < stepWidth) {
+						return null;
+					}
+					return { left: left, right: right, start: layout.timeAt(left), end: layout.timeAt(right) };
 				}
 			}
 			function appendLocationEvents(location, node) {
