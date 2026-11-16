@@ -703,10 +703,7 @@ Timetable.text = function(key, params) {
 					labelNode.style.right = layout.width - start + Timetable.OVERFLOW_MARGIN + 'px';
 				}
 				labelNode.appendChild(document.createElement('span')).textContent = entry.event.name;
-				// Clicking the copy does the same as clicking the event.
-				labelNode.addEventListener('click', function() {
-					eventNode.click();
-				});
+
 				trackEventNode(entry.event, labelNode);
 			}
 			// The font of a node as a canvas font string, optionally with another weight.

@@ -545,7 +545,8 @@
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
-  cursor: pointer;
+  /* Not interactive: clicks and drags go to the row below (e.g. to add an event). */
+  pointer-events: none;
 }
 
 /* Events with a fill bar have their top line at the top. */
