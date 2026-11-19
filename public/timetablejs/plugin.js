@@ -1014,8 +1014,16 @@ Timetable.text = function(key, params) {
 				trackEventNode(event, eventNode);
 
 				var hasCapacity = hasOptions && isValidRegistration(event.options.registered, event.options.capacity);
+				// The count also without a limit ("3/∞"), but not for events nobody can
+				// register for (a limit of 0).
+				var hasUnlimitedCount = hasOptions && typeof event.options.registered === 'number' &&
+					(event.options.capacity === undefined || event.options.capacity === null);
 				if (hasCapacity) {
 					appendRegistrationBar(event, eventNode);
+				} else if (hasUnlimitedCount) {
+					// The hover text shows the same count as the event.
+					eventNode.title = Timetable.text('timetable.registeredTitle',
+						{ name: event.name, count: event.options.registered + '/∞' });
 				}
 				// Optional minimum of people needed: marks whether it is reached
 				// (styled lighter in plugin.css), so events still needing help stand out.
@@ -1025,10 +1033,6 @@ Timetable.text = function(key, params) {
 					eventNode.title += Timetable.text(reached ? 'timetable.minimumReached' : 'timetable.minimumNeeded',
 						{ min: event.options.minimum });
 				}
-				// The count also without a limit ("3/∞"), but not for events nobody can
-				// register for (a limit of 0).
-				var hasUnlimitedCount = hasOptions && typeof event.options.registered === 'number' &&
-					(event.options.capacity === undefined || event.options.capacity === null);
 				if (hasCapacity || hasUnlimitedCount) {
 					appendRegistrationCount(event, eventNode, smallNode);
 				}
