@@ -41,7 +41,8 @@ declare(strict_types=1);
  *   POST app.php?action=admin_save_event { id?, name, locationId, start, end, capacity, minimum, info, url,
  *                                      responsible }
  *                                      -> { id }
- *                                      start/end as "YYYY-MM-DDTHH:MM"; capacity null = unlimited
+ *                                      start/end as "YYYY-MM-DDTHH:MM"; capacity null = unlimited,
+ *                                      0 = no registration (e.g. breaks)
  *   POST app.php?action=admin_delete_event { id }    -> { removedRegistrations }
  *   POST app.php?action=admin_save_page { title, intro } -> { page }  page title and introductory text
  *
@@ -708,7 +709,7 @@ try {
             if ($event['ends_at'] <= $event['starts_at']) {
                 respond(400, ['error' => 'end_before_start', 'field' => 'end']);
             }
-            if ($event['capacity'] !== null && (!is_int($event['capacity']) || $event['capacity'] < 1 || $event['capacity'] > 100000)) {
+            if ($event['capacity'] !== null && (!is_int($event['capacity']) || $event['capacity'] < 0 || $event['capacity'] > 100000)) {
                 respond(400, ['error' => 'invalid_capacity', 'field' => 'capacity']);
             }
             if ($event['min_helpers'] !== null && (!is_int($event['min_helpers']) || $event['min_helpers'] < 1 || $event['min_helpers'] > 100000)) {

@@ -22,6 +22,7 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'legend.full': 'Full',
   'legend.mine': 'You’re registered',
   'legend.over': 'Over',
+  'legend.noRegistration': 'Registration closed',
 
   // Shared
   'common.edit': 'Edit',
@@ -82,6 +83,8 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'events.changeOrCancel': 'Change or cancel',
   'events.youAreRegistered': '✓ You’re registered as {name}',
   'events.full': 'Full',
+  'events.noRegistration': 'Registration closed',
+  'events.noRegistrationButRegistered': 'Registration closed ({n} registered anyway)',
   'events.addMe': '+ Add me',
   'events.addSomeoneElse': '+ Add someone else',
 
@@ -213,7 +216,7 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'field.minimum': 'Minimum number of people needed',
   'field.minimumHint': 'Once reached, the event is shown in a lighter red. Leave empty for no minimum.',
   'field.capacity': 'Maximum number of people',
-  'field.capacityHint': 'Leave empty for no limit.',
+  'field.capacityHint': 'Leave empty for no limit. 0: nobody can register (e.g. for breaks).',
   'field.responsible': 'Responsible',
   'field.responsibleHint': 'Names of the people in charge, e.g. “Anna, Ben”. Shown to volunteers.',
   'field.description': 'Description',

@@ -74,6 +74,7 @@
         <li><span class="legend-swatch is-full"></span><span data-i18n="legend.full">Full</span></li>
         <li><span class="legend-swatch is-mine"></span><span data-i18n="legend.mine">You’re registered</span></li>
         <li><span class="legend-swatch is-past"></span><span data-i18n="legend.over">Over</span></li>
+        <li id="legend-no-registration" hidden><span class="legend-swatch is-no-registration"></span><span data-i18n="legend.noRegistration">No registration</span></li>
       </ul>
       <p class="hint" id="timetable-admin-hint" hidden data-i18n="timetable.adminDragHint">Admin: drag with the mouse across a row to add an event there.</p>
     </section>
@@ -371,14 +372,19 @@
           }
         });
 
+        var hasNoRegistrationEvents = false;
         data.events.forEach(function(event) {
           timetable.addEvent(event.name, event.location, new Date(event.start), new Date(event.end), {
             url: '#' + getEventInfoId(event),
             registered: event.registered,
             capacity: event.capacity === null ? undefined : event.capacity,
             minimum: event.minimum === null ? undefined : event.minimum,
-            class: findMyBooking(event.id) ? 'is-mine' : undefined
+            class: [findMyBooking(event.id) ? 'is-mine' : '', noRegistration(event) ? 'no-registration' : '']
+              .filter(Boolean).join(' ') || undefined
           });
+          if (noRegistration(event)) {
+            hasNoRegistrationEvents = true;
+          }
         });
 
         // Admins can drag across a row to add an event there.
@@ -387,6 +393,7 @@
           openEventEditor(null, { locationId: location ? location.id : null, start: start, end: end });
         });
         document.getElementById('timetable-admin-hint').hidden = admin === null;
+        document.getElementById('legend-no-registration').hidden = !hasNoRegistrationEvents;
 
         // Reuse the renderer (it owns the current-time timer) and keep the scroll position.
         var scrollLeft = null;
@@ -466,6 +473,11 @@
       }
 
       // A small bar showing how full an event is.
+      // A maximum of 0: nobody registers for it (e.g. a break or an information point).
+      function noRegistration(event) {
+        return event.capacity === 0;
+      }
+
       function capacityMeter(event) {
         var meter = el('span', 'capacity-meter', el('span', 'capacity-meter-fill'));
         var ratio = Math.min(event.registered / event.capacity, 1);
@@ -513,7 +525,10 @@
         }
 
         var registration = article.appendChild(el('p', 'event-registration'));
-        if (event.capacity !== null) {
+        if (noRegistration(event)) {
+          registration.textContent = event.registered > 0 ?
+            t('events.noRegistrationButRegistered', { n: event.registered }) : t('events.noRegistration');
+        } else if (event.capacity !== null) {
           var full = event.registered >= event.capacity;
           registration.appendChild(capacityMeter(event));
           registration.appendChild(document.createTextNode(full ?
@@ -580,7 +595,7 @@
           }
         }
 
-        if (isPast(event)) {
+        if (isPast(event) || noRegistration(event)) {
           return actions;
         }
 
@@ -1213,7 +1228,7 @@
           input.value = field.value === null || field.value === undefined ? '' : String(field.value);
           input.required = Boolean(field.required);
           if (field.type === 'number') {
-            input.min = 1;
+            input.min = field.min !== undefined ? field.min : 1;
             input.step = 1;
           }
           inputs[field.key] = input;
@@ -1351,7 +1366,7 @@
           { key: 'minimum', label: t('field.minimum'), type: 'number',
             value: isNew ? '' : event.minimum, hint: t('field.minimumHint') },
           { key: 'capacity', label: t('field.capacity'), type: 'number',
-            value: isNew ? '' : event.capacity, hint: t('field.capacityHint') },
+            value: isNew ? '' : event.capacity, hint: t('field.capacityHint'), min: 0 },
           { key: 'responsible', label: t('field.responsible'), value: isNew ? '' : event.responsible,
             hint: t('field.responsibleHint') },
           { key: 'info', label: t('field.description'), type: 'textarea', value: isNew ? '' : event.info },

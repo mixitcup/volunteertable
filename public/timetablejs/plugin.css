@@ -595,3 +595,15 @@
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* Events nobody registers for (a maximum of 0, e.g. breaks): white with a grey
+   border, so they don't look like they need help. Past ones turn grey like all others. */
+.timetable .time-entry.no-registration:not(.is-past) {
+  background-color: #FFFFFF;
+  border-color: #B0B0B0;
+  color: #444;
+}
+
+.timetable .time-entry.no-registration:not(.is-past):hover {
+  background-color: #F2F2F2;
+}

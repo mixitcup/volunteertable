@@ -1344,6 +1344,11 @@ a:hover {
   border-color: #B0B0B0;
 }
 
+.legend-swatch.is-no-registration {
+  background-color: #FFFFFF;
+  border-color: #B0B0B0;
+}
+
 /* Language switch in the top-right corner */
 body {
   position: relative;

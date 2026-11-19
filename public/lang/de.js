@@ -20,6 +20,7 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'legend.full': 'Voll',
   'legend.mine': 'Du bist angemeldet',
   'legend.over': 'Vorbei',
+  'legend.noRegistration': 'Anmeldung geschlossen',
 
   // Allgemein
   'common.edit': 'Bearbeiten',
@@ -80,6 +81,8 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'events.changeOrCancel': 'Ändern oder absagen',
   'events.youAreRegistered': '✓ Du bist angemeldet als {name}',
   'events.full': 'Voll',
+  'events.noRegistration': 'Anmeldung geschlossen',
+  'events.noRegistrationButRegistered': 'Anmeldung geschlossen ({n} trotzdem angemeldet)',
   'events.addMe': '+ Ich bin dabei',
   'events.addSomeoneElse': '+ Jemand anderen anmelden',
 
@@ -211,7 +214,7 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'field.minimum': 'Mindestens benötigte Personen',
   'field.minimumHint': 'Ist es erreicht, wird die Veranstaltung in hellerem Rot gezeigt. Leer lassen für kein Minimum.',
   'field.capacity': 'Maximale Anzahl an Personen',
-  'field.capacityHint': 'Leer lassen für keine Begrenzung.',
+  'field.capacityHint': 'Leer lassen für keine Begrenzung. 0: niemand kann sich anmelden (z. B. für Pausen).',
   'field.responsible': 'Verantwortlich',
   'field.responsibleHint': 'Namen der verantwortlichen Personen, z. B. „Anna, Ben“. Für Helfer*innen sichtbar.',
   'field.description': 'Beschreibung',
