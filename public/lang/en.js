@@ -92,6 +92,7 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'form.register': 'Register',
   'form.registerThem': 'Register them',
   'form.otherIntro': 'Register a friend or colleague for this event.',
+  'form.overlap': 'Heads-up: at this time you’re already registered for {events}.',
   'form.otherName': 'Their name (shown to others)',
   'form.otherEmail': 'Their email address (not shown; we send them a confirmation with a link to change or cancel)',
   'form.name': 'Name (shown to others)',

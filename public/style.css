@@ -1258,6 +1258,16 @@ a:hover {
   color: var(--muted);
 }
 
+/* In the registration form: you already have a shift at this time. */
+.form-warning {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 3px solid #E0A800;
+  border-radius: 4px;
+  background-color: #FFF6D6;
+  color: #5C4500;
+}
+
 /* Minimum number of people: mark on the fill bar and a hint next to the count. */
 .capacity-meter {
   position: relative;

@@ -90,6 +90,7 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'form.register': 'Anmelden',
   'form.registerThem': 'Anmelden',
   'form.otherIntro': 'Melde jemanden aus deinem Freundeskreis oder Team für diese Veranstaltung an.',
+  'form.overlap': 'Achtung: Zu dieser Zeit bist du schon für {events} angemeldet.',
   'form.otherName': 'Name der Person (für andere sichtbar)',
   'form.otherEmail': 'E-Mail-Adresse der Person (nicht sichtbar; wir schicken ihr eine Bestätigung mit einem Link zum Ändern oder Absagen)',
   'form.name': 'Name (für andere sichtbar)',

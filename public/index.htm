@@ -646,6 +646,19 @@
       // Registering for an event: yourself (prefilled with your last name and email,
       // linked to this browser), or someone else (empty, not linked to this browser;
       // they get a confirmation email with their own link instead).
+      // Events of this browser's registrations that overlap the given event in time.
+      function overlappingRegistrations(event) {
+        var start = new Date(event.start);
+        var end = new Date(event.end);
+        return myBookings
+          .map(function(booking) { return findEvent(booking.eventId); })
+          .filter(function(other, index, all) {
+            return other !== null && other.id !== event.id && all.indexOf(other) === index &&
+              new Date(other.start) < end && new Date(other.end) > start;
+          })
+          .sort(function(a, b) { return new Date(a.start) - new Date(b.start); });
+      }
+
       function renderBookingForm(event, forSomeoneElse) {
         var contact = forSomeoneElse ? { name: '', email: '' } : loadContact();
         var form = el('form', forSomeoneElse ? 'booking-form booking-form-other' : 'booking-form');
@@ -678,6 +691,18 @@
           form.appendChild(el('label', null, t('form.otherName'), nameInput));
           form.appendChild(el('label', null, t('form.otherEmail'), emailInput));
         } else {
+          // Registering for something at the same time as one of your shifts:
+          // a warning, but still possible (e.g. when leaving one shift early).
+          var overlapping = overlappingRegistrations(event);
+          if (overlapping.length > 0) {
+            var warning = form.appendChild(el('p', 'form-warning'));
+            warning.setAttribute('role', 'status');
+            warning.textContent = t('form.overlap', {
+              events: overlapping.map(function(other) {
+                return '“' + other.name + '” (' + formatTimeRange(new Date(other.start), new Date(other.end)) + ')';
+              }).join(', ')
+            });
+          }
           form.appendChild(el('label', null, t('form.name'), nameInput));
           form.appendChild(el('label', null, t('form.email'), emailInput));
         }
