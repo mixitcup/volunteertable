@@ -27,6 +27,8 @@ Timetable.Renderer = function(tt) {
 	this.layout = null;
 	this.selector = null;
 	this.mediaListener = null;
+	// Long breaks the user expanded, by their start time (see createLayout).
+	this.expandedGaps = {};
 };
 
 // Width of one hour in the timeline, in pixels. On narrow screens hours are
@@ -44,6 +46,12 @@ Timetable.OVERFLOW_GAP = 6;
 Timetable.NAME_LINES = { withBar: 1, withoutBar: 2 };
 // Selecting a time span by dragging snaps to this step.
 Timetable.SELECT_STEP_MINUTES = 15;
+// Long breaks without any event are shortened to a narrow strip that expands when
+// clicked: breaks of at least GAP_MIN_HOURS, keeping GAP_PADDING_HOURS visible
+// next to the events around them, drawn GAP_WIDTH pixels wide.
+Timetable.GAP_MIN_HOURS = 3;
+Timetable.GAP_PADDING_HOURS = 1;
+Timetable.GAP_WIDTH = 44;
 Timetable.NARROW_SCREEN = '(max-width: 600px)';
 // How often the current-time line and past/current markers are refreshed.
 Timetable.NOW_UPDATE_INTERVAL = 30 * 1000;
@@ -56,7 +64,10 @@ Timetable.texts = {
 	'timetable.registeredTitle': '{name} ({count} registered)',
 	'timetable.minimumReached': ' – minimum of {min} reached',
 	'timetable.minimumNeeded': ' – at least {min} needed',
-	'timetable.registeredCount': '({count} registered)'
+	'timetable.registeredCount': '({count} registered)',
+	'timetable.gapHours': '{hours} h',
+	'timetable.expandGap': 'No events from {from} to {to}. Click to show these hours.',
+	'timetable.collapseGap': 'Hide the hours without events'
 };
 Timetable.translate = null;
 
@@ -135,46 +146,154 @@ Timetable.text = function(key, params) {
 	function isNarrowScreen() {
 		return typeof window.matchMedia === 'function' && window.matchMedia(Timetable.NARROW_SCREEN).matches;
 	}
-	function createLayout(timetable, now) {
+	var HOUR = 3600000;
+
+	// The full hour at or before / at or after a point in time (in ms).
+	function floorHour(time) {
+		var date = new Date(time);
+		date.setMinutes(0, 0, 0);
+		return date.getTime();
+	}
+	function ceilHour(time) {
+		var floored = floorHour(time);
+		return floored === time ? time : floored + HOUR;
+	}
+
+	/*
+	 * Long breaks: stretches of at least Timetable.GAP_MIN_HOURS in which no event
+	 * takes place at any location (e.g. nights), within the displayed days. A
+	 * little time next to the events around them stays visible. Times in ms, on
+	 * full hours.
+	 */
+	function findGaps(events, rangeStart, rangeEnd) {
+		var busy = events
+			.map(function(event) { return { start: event.startDate.getTime(), end: event.endDate.getTime() }; })
+			.sort(function(a, b) { return a.start - b.start; });
+		var free = [];
+		var freeFrom = rangeStart;
+		busy.forEach(function(interval) {
+			if (interval.start > freeFrom) {
+				free.push({ start: freeFrom, end: interval.start });
+			}
+			freeFrom = Math.max(freeFrom, interval.end);
+		});
+		if (freeFrom < rangeEnd) {
+			free.push({ start: freeFrom, end: rangeEnd });
+		}
+
+		var padding = Timetable.GAP_PADDING_HOURS * HOUR;
+		return free.map(function(interval) {
+			// No padding at the start and end of the timeline: nothing is next to it there.
+			return {
+				start: ceilHour(interval.start) + (interval.start === rangeStart ? 0 : padding),
+				end: floorHour(interval.end) - (interval.end === rangeEnd ? 0 : padding)
+			};
+		}).filter(function(gap) {
+			return gap.end - gap.start >= Timetable.GAP_MIN_HOURS * HOUR;
+		});
+	}
+
+	/*
+	 * The horizontal layout: a sequence of segments from the first displayed day
+	 * to the last. Hours within the scope are hourWidth wide, a collapsed long
+	 * break is one narrow strip, and hours outside the scope (e.g. at night with
+	 * a scope of 09:00 to 17:00) take no room.
+	 */
+	function createLayout(timetable, now, expandedGaps) {
 		var scopeHours = getScopeDurationHours(timetable.scope);
 		var days = computeDays(timetable.events, timetable.scope, now);
 		var hourWidth = isNarrowScreen() ? Timetable.HOUR_WIDTH_NARROW : Timetable.HOUR_WIDTH;
-		var dayWidth = scopeHours * hourWidth;
+		var dayRanges = days.map(function(day) {
+			var end = new Date(day.getTime());
+			end.setHours(end.getHours() + scopeHours);
+			return { start: day.getTime(), end: end.getTime() };
+		});
+		var rangeStart = dayRanges[0].start;
+		var rangeEnd = dayRanges[dayRanges.length - 1].end;
+		var gaps = findGaps(timetable.events, rangeStart, rangeEnd);
+		gaps.forEach(function(gap) {
+			gap.expanded = Boolean(expandedGaps[gap.start]);
+		});
+		var collapsed = gaps.filter(function(gap) { return !gap.expanded; });
+
+		// Cut the timeline at every day and break boundary, then size each piece.
+		var points = [];
+		dayRanges.forEach(function(range) { points.push(range.start, range.end); });
+		collapsed.forEach(function(gap) { points.push(gap.start, gap.end); });
+		points = points.sort(function(a, b) { return a - b; }).filter(function(point, index, all) {
+			return index === 0 || point !== all[index - 1];
+		});
+		var segments = [];
+		var x = 0;
+		var findCollapsed = function(start, end) {
+			return collapsed.filter(function(candidate) { return candidate.start <= start && end <= candidate.end; })[0];
+		};
+		var isInScope = function(start, end) {
+			return dayRanges.some(function(range) { return range.start <= start && end <= range.end; });
+		};
+		for (var k = 0; k + 1 < points.length; k++) {
+			var start = points[k];
+			var end = points[k + 1];
+			var gap = findCollapsed(start, end);
+			var last = segments[segments.length - 1];
+			if (gap !== undefined) {
+				if (last !== undefined && last.gap === gap) {
+					last.end = end;
+				} else {
+					segments.push({ start: start, end: end, x: x, width: Timetable.GAP_WIDTH, gap: gap, visible: false });
+					x += Timetable.GAP_WIDTH;
+				}
+				continue;
+			}
+			var inScope = isInScope(start, end);
+			var width = inScope ? (end - start) / HOUR * hourWidth : 0;
+			segments.push({ start: start, end: end, x: x, width: width, gap: null, visible: inScope });
+			x += width;
+		}
+
 		var layout = {
 			hourWidth: hourWidth,
 			days: days,
-			scopeHours: scopeHours,
-			dayWidth: dayWidth,
-			width: days.length * dayWidth,
+			segments: segments,
+			gaps: gaps,
+			width: x,
 			// Horizontal position in pixels of a point in time. Times outside the
 			// scope (e.g. at night) are placed at the end of their day.
 			positionOf: function(date) {
-				var dayStart = getDayStart(date, timetable.scope);
-				var index = -1;
-				for (var k = 0; k < days.length; k++) {
-					if (days[k].getTime() === dayStart.getTime()) {
-						index = k;
-						break;
+				var time = date.getTime();
+				for (var k = 0; k < segments.length; k++) {
+					var segment = segments[k];
+					if (time < segment.end) {
+						var into = Math.max(0, time - segment.start) / (segment.end - segment.start);
+						return segment.x + into * segment.width;
 					}
 				}
-				if (index === -1) {
-					return date < days[0] ? 0 : layout.width;
-				}
-				var hoursIntoDay = Math.min((date - dayStart) / 3600000, scopeHours);
-				return index * dayWidth + hoursIntoDay * hourWidth;
+				return layout.width;
 			},
 			// The point in time at a horizontal position (the opposite of positionOf).
 			timeAt: function(x) {
-				var index = Math.max(0, Math.min(Math.floor(x / dayWidth), days.length - 1));
-				var minutes = Math.round(Math.max(0, Math.min(x - index * dayWidth, dayWidth)) / hourWidth * 60);
-				var date = new Date(days[index].getTime());
-				date.setMinutes(date.getMinutes() + minutes);
-				return date;
+				for (var k = 0; k < segments.length; k++) {
+					var segment = segments[k];
+					if (segment.width > 0 && x < segment.x + segment.width) {
+						var into = Math.max(0, x - segment.x) / segment.width;
+						return new Date(segment.start + Math.round(into * (segment.end - segment.start) / 60000) * 60000);
+					}
+				}
+				return new Date(rangeEnd);
+			},
+			// Where a day begins; a day starting within a collapsed break begins after it.
+			dayStartX: function(day) {
+				var time = day.getTime();
+				for (var k = 0; k < segments.length; k++) {
+					var segment = segments[k];
+					if (segment.gap && segment.start < time && time < segment.end) {
+						return segment.x + segment.width;
+					}
+				}
+				return layout.positionOf(day);
 			},
 			isInRange: function(date) {
-				var start = days[0];
-				var end = new Date(days[days.length - 1].getTime() + scopeHours * 3600000);
-				return date >= start && date <= end;
+				return date.getTime() >= rangeStart && date.getTime() <= rangeEnd;
 			}
 		};
 		return layout;
@@ -493,7 +612,9 @@ Timetable.text = function(key, params) {
 				canvasNode.className = 'timeline-canvas';
 				canvasNode.style.width = layout.width + 'px';
 				appendTimeRows(canvasNode);
+				appendGrid(canvasNode);
 				appendDayDividers(canvasNode);
+				appendGaps(canvasNode);
 
 				nowNodes.pastShade = canvasNode.appendChild(document.createElement('div'));
 				nowNodes.pastShade.className = 'past-shade';
@@ -515,29 +636,60 @@ Timetable.text = function(key, params) {
 				var headerULNode = headerNode.appendChild(document.createElement('ul'));
 				headerULNode.style.width = layout.width + 'px';
 
-				layout.days.forEach(function(day) {
+				layout.days.forEach(function(day, index) {
+					var from = index === 0 ? 0 : layout.dayStartX(day);
+					var to = index + 1 < layout.days.length ? layout.dayStartX(layout.days[index + 1]) : layout.width;
+					// A day completely within a collapsed break isn't shown, so it gets no
+					// label (its name would cover the next day's).
+					if (to - from < 1) {
+						return;
+					}
 					var dayNode = dayLabelsNode.appendChild(document.createElement('div'));
 					dayNode.className = 'day-label';
-					dayNode.style.width = layout.dayWidth + 'px';
+					dayNode.style.width = to - from + 'px';
 					dayNode.appendChild(document.createElement('span')).textContent =
 						prettyFormatDay(day, timetable.locale, true);
+				});
 
-					for (var k = 0; k < layout.scopeHours; k++) {
+				var dayStarts = layout.days.map(function(day) { return day.getTime(); });
+				var lastEnd = null;
+				var afterGap = false;
+				layout.segments.forEach(function(segment) {
+					if (segment.gap) {
+						// A collapsed break: room above its strip (which shows its length).
+						var gapNode = headerULNode.appendChild(document.createElement('li'));
+						gapNode.className = 'gap';
+						gapNode.style.width = segment.width + 'px';
+						lastEnd = segment.end;
+						afterGap = true;
+						return;
+					}
+					if (!segment.visible) {
+						return;
+					}
+					for (var time = segment.start; time < segment.end; time += HOUR) {
 						var liNode = headerULNode.appendChild(document.createElement('li'));
-						if (k === 0) {
-							liNode.className = 'day-start';
+						if (dayStarts.indexOf(time) !== -1) {
+							liNode.classList.add('day-start');
+						}
+						// Right after a break, the label starts at the line instead of
+						// being centred on it, so it doesn't cover the break's length.
+						if (afterGap) {
+							liNode.classList.add('after-gap');
+							afterGap = false;
 						}
 						var spanNode = liNode.appendChild(document.createElement('span'));
 						spanNode.className = 'time-label';
-						spanNode.textContent = prettyFormatHour((timetable.scope.hourStart + k) % 24, timetable.usingTwelveHour);
+						spanNode.textContent = prettyFormatHour(new Date(time).getHours(), timetable.usingTwelveHour);
 					}
+					lastEnd = segment.end;
 				});
 
-				// Closing label at the end of the last day.
+				// Closing label at the end of the timeline.
 				var endNode = headerULNode.appendChild(document.createElement('li'));
 				var endLabelNode = endNode.appendChild(document.createElement('span'));
 				endLabelNode.className = 'time-label';
-				endLabelNode.textContent = prettyFormatHour(timetable.scope.hourEnd, timetable.usingTwelveHour);
+				endLabelNode.textContent = prettyFormatHour(new Date(lastEnd).getHours(), timetable.usingTwelveHour);
 
 				nowNodes.marker = headerNode.appendChild(document.createElement('span'));
 				nowNodes.marker.className = 'now-marker';
@@ -548,8 +700,79 @@ Timetable.text = function(key, params) {
 				for (var k = 1; k < layout.days.length; k++) {
 					var dividerNode = node.appendChild(document.createElement('div'));
 					dividerNode.className = 'day-divider';
-					dividerNode.style.left = k * layout.dayWidth + 'px';
+					dividerNode.style.left = layout.dayStartX(layout.days[k]) + 'px';
 				}
+			}
+			// Lines every hour and quarter of an hour, in the displayed hours only.
+			function appendGrid(node) {
+				layout.segments.forEach(function(segment) {
+					if (!segment.visible || segment.width === 0) {
+						return;
+					}
+					var gridNode = node.appendChild(document.createElement('div'));
+					gridNode.className = 'timeline-grid';
+					gridNode.style.left = segment.x + 'px';
+					gridNode.style.width = segment.width + 'px';
+				});
+			}
+			// Collapsed breaks as narrow strips across all rows; expanded ones get a
+			// small button to collapse them again.
+			function appendGaps(node) {
+				layout.segments.forEach(function(segment) {
+					if (!segment.gap) {
+						return;
+					}
+					var stripNode = node.appendChild(createGapButton(segment.gap));
+					stripNode.classList.add('timeline-gap');
+					stripNode.style.left = segment.x + 'px';
+					stripNode.style.width = segment.width + 'px';
+					var lengthNode = stripNode.appendChild(document.createElement('span'));
+					lengthNode.className = 'timeline-gap-length';
+					lengthNode.textContent = Timetable.text('timetable.gapHours',
+						{ hours: Math.round((segment.gap.end - segment.gap.start) / HOUR) });
+					stripNode.appendChild(document.createElement('span')).textContent = '↔';
+				});
+				layout.gaps.forEach(function(gap) {
+					if (!gap.expanded) {
+						return;
+					}
+					var collapseNode = node.appendChild(document.createElement('button'));
+					collapseNode.type = 'button';
+					collapseNode.className = 'timeline-gap-collapse';
+					collapseNode.style.left = layout.positionOf(new Date(gap.start)) + 'px';
+					collapseNode.textContent = '→←';
+					collapseNode.title = Timetable.text('timetable.collapseGap');
+					collapseNode.setAttribute('aria-label', collapseNode.title);
+					collapseNode.addEventListener('click', function() {
+						toggleGap(gap, false);
+					});
+				});
+			}
+			function createGapButton(gap) {
+				var buttonNode = document.createElement('button');
+				buttonNode.type = 'button';
+				buttonNode.className = 'gap-button';
+				var format = function(time) {
+					var date = new Date(time);
+					return prettyFormatDay(date, timetable.locale, false) + ', ' + prettyFormatTime(date, timetable.usingTwelveHour);
+				};
+				buttonNode.title = Timetable.text('timetable.expandGap', { from: format(gap.start), to: format(gap.end) });
+				buttonNode.setAttribute('aria-label', buttonNode.title);
+				buttonNode.addEventListener('click', function() {
+					toggleGap(gap, true);
+				});
+				return buttonNode;
+			}
+			// Expands or collapses a break; the view stays where it is.
+			function toggleGap(gap, expanded) {
+				if (expanded) {
+					renderer.expandedGaps[gap.start] = true;
+				} else {
+					delete renderer.expandedGaps[gap.start];
+				}
+				var scrollLeft = renderer.scrollNode.scrollLeft;
+				renderer.draw(renderer.selector);
+				renderer.scrollNode.scrollLeft = scrollLeft;
 			}
 			function appendTimeRows(node) {
 				var ulNode = node.appendChild(document.createElement('ul'));
@@ -572,9 +795,11 @@ Timetable.text = function(key, params) {
 			 * input is left alone, so the timeline can still be scrolled on phones.
 			 */
 			function enableRangeSelect(location, rowNode) {
-				var stepWidth = layout.hourWidth * Timetable.SELECT_STEP_MINUTES / 60;
+				var step = Timetable.SELECT_STEP_MINUTES * 60000;
+				// The nearest whole step (in time) to a position.
 				var snap = function(x) {
-					return Math.max(0, Math.min(Math.round(x / stepWidth) * stepWidth, layout.width));
+					var time = new Date(Math.round(layout.timeAt(x).getTime() / step) * step);
+					return { x: layout.positionOf(time), time: time };
 				};
 				var drag = null;
 
@@ -624,10 +849,10 @@ Timetable.text = function(key, params) {
 				function selectedSpan() {
 					var left = snap(Math.min(drag.from, drag.to));
 					var right = snap(Math.max(drag.from, drag.to));
-					if (right - left < stepWidth) {
+					if (right.time - left.time < step) {
 						return null;
 					}
-					return { left: left, right: right, start: layout.timeAt(left), end: layout.timeAt(right) };
+					return { left: left.x, right: right.x, start: left.time, end: right.time };
 				}
 			}
 			function appendLocationEvents(location, node) {
@@ -856,7 +1081,8 @@ Timetable.text = function(key, params) {
 			var renderer = this;
 			var trackedEvents = [];
 			var nowNodes = {};
-			var layout = createLayout(timetable, new Date());
+			this.selector = selector;
+			var layout = createLayout(timetable, new Date(), this.expandedGaps);
 			var lanes = computeLanes();
 			var container = document.querySelector(selector);
 			checkContainerPrecondition(container);

@@ -283,5 +283,8 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'timetable.registeredTitle': '{name} ({count} registered)',
   'timetable.minimumReached': ' – minimum of {min} reached',
   'timetable.minimumNeeded': ' – at least {min} needed',
-  'timetable.registeredCount': '({count} registered)'
+  'timetable.registeredCount': '({count} registered)',
+  'timetable.gapHours': '{hours} h',
+  'timetable.expandGap': 'No events from {from} to {to}. Click to show these hours.',
+  'timetable.collapseGap': 'Hide the hours without events'
 });

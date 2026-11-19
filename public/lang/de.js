@@ -281,5 +281,8 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'timetable.registeredTitle': '{name} ({count} angemeldet)',
   'timetable.minimumReached': ' – Minimum von {min} erreicht',
   'timetable.minimumNeeded': ' – mindestens {min} gesucht',
-  'timetable.registeredCount': '({count} angemeldet)'
+  'timetable.registeredCount': '({count} angemeldet)',
+  'timetable.gapHours': '{hours} Std.',
+  'timetable.expandGap': 'Keine Veranstaltungen von {from} bis {to}. Klicken, um diese Stunden anzuzeigen.',
+  'timetable.collapseGap': 'Stunden ohne Veranstaltungen ausblenden'
 });

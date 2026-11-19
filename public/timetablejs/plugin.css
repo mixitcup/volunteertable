@@ -330,27 +330,19 @@
   height: 44px;
 }
 
-.timetable ul.room-timeline li::after,
-.timetable ul.room-timeline li::before {
-  content: '';
+/* Grid lines, drawn per stretch of displayed hours by plugin.js (long breaks in
+   between are collapsed): a double line every hour, a thin one every quarter. */
+.timetable .timeline-grid {
   position: absolute;
   z-index: 1;
-  left: 0;
   top: 0;
-  right: 0;
   bottom: 0;
-}
-
-.timetable ul.room-timeline li::before {
-  background-image: linear-gradient(to right, #E5E5E5 1px, transparent 1px);
-  /* A thin line every quarter of an hour. */
-  background-size: calc(var(--hour-width, 96px) / 4) auto;
-}
-
-.timetable ul.room-timeline li::after {
-  background-image: linear-gradient(to right, #E5E5E5, #E5E5E5 1px, #F4F4F4 1px, #F4F4F4 2px, #E5E5E5 2px, #E5E5E5 3px, transparent 3px, transparent);
-  background-size: var(--hour-width, 96px) auto;
-  background-position: -2px 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, #E5E5E5, #E5E5E5 1px, #F4F4F4 1px, #F4F4F4 2px, #E5E5E5 2px, #E5E5E5 3px, transparent 3px, transparent),
+    linear-gradient(to right, #E5E5E5 1px, transparent 1px);
+  background-size: var(--hour-width, 96px) auto, calc(var(--hour-width, 96px) / 4) auto;
+  background-position: -2px 0, 0 0;
 }
 
 .timetable .time-entry {
@@ -606,4 +598,81 @@
 
 .timetable .time-entry.no-registration:not(.is-past):hover {
   background-color: #F2F2F2;
+}
+
+/* A long break without events, collapsed to a narrow strip with its length (see
+   createLayout in plugin.js): plain white between two grey lines, so it stands
+   apart from the grey hatching of the past. Clicking it shows the hours. */
+.timetable .gap-button {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.timetable .timeline-gap {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+  border-left: 2px solid #BDBDBD;
+  border-right: 2px solid #BDBDBD;
+  background-color: white;
+  color: #6B6B6B;
+  font-size: 1rem;
+}
+
+.timetable .timeline-gap > span {
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* The length ("14 h"); wraps if a translation is too long for the strip. */
+.timetable .timeline-gap .timeline-gap-length {
+  max-width: calc(100% - 4px);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.timetable .timeline-gap:hover,
+.timetable .timeline-gap:focus-visible {
+  background-color: #F5F5F5;
+  color: #222;
+}
+
+/* The first hour after a collapsed break: label next to the line, not across it. */
+.timetable > section > header li.after-gap .time-label {
+  transform: translateX(3px);
+}
+
+/* On an expanded break: collapses it again. */
+.timetable .timeline-gap-collapse {
+  position: absolute;
+  z-index: 3;
+  top: 4px;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid #BDBDBD;
+  border-radius: 4px;
+  background-color: white;
+  color: #6B6B6B;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.timetable .timeline-gap-collapse:hover {
+  border-color: #8A8A8A;
+  color: #333;
 }
