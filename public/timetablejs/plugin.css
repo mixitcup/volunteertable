@@ -527,7 +527,8 @@
    look like an event itself. Same font and position as the name in the event. */
 .timetable .time-entry-overflow {
   position: absolute;
-  z-index: 2;
+  /* In front of collapsed breaks (z-index 3), which the name may cross. */
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -675,4 +676,9 @@
 .timetable .timeline-gap-collapse:hover {
   border-color: #8A8A8A;
   color: #333;
+}
+
+/* A name next to an event that runs across a collapsed break. */
+.timetable .time-entry-overflow.is-over-gap {
+  text-shadow: 0 0 2px white, 0 0 2px white, 0 0 3px white;
 }

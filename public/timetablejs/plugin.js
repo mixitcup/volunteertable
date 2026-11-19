@@ -927,6 +927,16 @@ Timetable.text = function(key, params) {
 				} else {
 					labelNode.style.right = layout.width - start + Timetable.OVERFLOW_MARGIN + 'px';
 				}
+				// The name is drawn in front of collapsed breaks; where it crosses one, a
+				// white halo keeps the break's edge lines off the letters.
+				var labelLeft = side === 'right' ? end + Timetable.OVERFLOW_MARGIN : start - Timetable.OVERFLOW_MARGIN - textWidth;
+				var labelRight = labelLeft + textWidth;
+				var crossesGap = layout.segments.some(function(segment) {
+					return segment.gap && segment.x < labelRight && segment.x + segment.width > labelLeft;
+				});
+				if (crossesGap) {
+					labelNode.classList.add('is-over-gap');
+				}
 				labelNode.appendChild(document.createElement('span')).textContent = entry.event.name;
 
 				trackEventNode(entry.event, labelNode);
