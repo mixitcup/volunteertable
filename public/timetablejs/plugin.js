@@ -917,8 +917,7 @@ Timetable.text = function(key, params) {
 
 				var labelNode = rowNode.appendChild(document.createElement('span'));
 				labelNode.className = 'time-entry-overflow is-' + side +
-					(isMine ? ' is-mine' : '') +
-					(eventNode.classList.contains('has-registration') ? ' has-registration' : '');
+					(isMine ? ' is-mine' : '');
 				labelNode.setAttribute('aria-hidden', 'true');
 				labelNode.title = eventNode.title;
 				labelNode.style.top = entry.lane * Timetable.ROW_HEIGHT + 'px';
@@ -1026,16 +1025,22 @@ Timetable.text = function(key, params) {
 					eventNode.title += Timetable.text(reached ? 'timetable.minimumReached' : 'timetable.minimumNeeded',
 						{ min: event.options.minimum });
 				}
-				if (hasCapacity || (hasOptions && hasMinimum(event) && typeof event.options.registered === 'number')) {
+				// The count also without a limit ("3/∞"), but not for events nobody can
+				// register for (a limit of 0).
+				var hasUnlimitedCount = hasOptions && typeof event.options.registered === 'number' &&
+					(event.options.capacity === undefined || event.options.capacity === null);
+				if (hasCapacity || hasUnlimitedCount) {
 					appendRegistrationCount(event, eventNode, smallNode);
 				}
 				return eventNode;
 			}
-			// "5/15", with the minimum if there is one: "5/15 · min 5" (or "2 · min 5" without a maximum).
+			// "5/15", with the minimum if there is one: "5/15 (min. 5)"; "2/∞" without a maximum.
 			function appendRegistrationCount(event, eventNode, smallNode) {
 				var text = String(event.options.registered);
 				if (isValidRegistration(event.options.registered, event.options.capacity)) {
 					text += '/' + event.options.capacity;
+				} else {
+					text += '/∞';
 				}
 				if (hasMinimum(event)) {
 					text += ' (min. ' + event.options.minimum + ')';

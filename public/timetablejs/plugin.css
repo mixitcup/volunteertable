@@ -394,6 +394,12 @@
    (Timetable.NAME_LINES in plugin.js must match). Long words are hyphenated by
    the browser in the page's language (<html lang>); where it can't, they are
    broken anywhere. */
+/* With a fill bar, the top line moves up to make room for it. */
+.timetable .time-entry.has-registration small {
+  top: 4px;
+  transform: none;
+}
+
 .timetable .time-entry:not(.has-registration) .time-entry-name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -405,16 +411,12 @@
   hyphens: auto;
 }
 
-/* With a fill bar, the top line moves up to make room for it. */
-.timetable .time-entry.has-registration small {
-  top: 4px;
-  transform: none;
-}
-
 .timetable .time-entry .registration-count {
   flex: none;
   font-size: 0.75rem;
-  font-weight: 500;
+  /* Regular, lighter than the name (600). Not 500: Windows' system font has no
+     medium weight, and Edge then shows the semibold one. */
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -530,6 +532,7 @@
   /* In front of collapsed breaks (z-index 3), which the name may cross. */
   z-index: 4;
   display: flex;
+  /* Vertically centred in the lane, with or without a fill bar in the event. */
   align-items: center;
   gap: 6px;
   height: 45px;
@@ -540,13 +543,6 @@
   white-space: nowrap;
   /* Not interactive: clicks and drags go to the row below (e.g. to add an event). */
   pointer-events: none;
-}
-
-/* Events with a fill bar have their top line at the top. */
-.timetable .time-entry-overflow.has-registration {
-  align-items: flex-start;
-  padding-top: 5px;
-  box-sizing: border-box;
 }
 
 .timetable .time-entry-overflow.is-mine > :first-child::before {
