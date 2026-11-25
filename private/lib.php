@@ -480,6 +480,20 @@ function vt_page_texts(): array
     return ['title' => $texts['page_title'], 'intro' => $texts['page_intro']];
 }
 
+/** Whether the admin published the Statistics tab to volunteers. */
+function vt_stats_public(): bool
+{
+    return vt_query("SELECT value FROM vt_settings WHERE name = 'stats_public'")->fetchColumn() === '1';
+}
+
+function vt_set_stats_public(bool $public): void
+{
+    vt_transaction(function () use ($public) {
+        vt_query("DELETE FROM vt_settings WHERE name = 'stats_public'");
+        vt_query("INSERT INTO vt_settings (name, value) VALUES ('stats_public', ?)", [$public ? '1' : '0']);
+    });
+}
+
 function vt_save_text(string $name, string $value): void
 {
     vt_transaction(function () use ($name, $value) {

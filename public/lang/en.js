@@ -9,6 +9,7 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'tabs.locations': 'Locations',
   'tabs.events': 'Events',
   'tabs.myEvents': 'My events',
+  'tabs.stats': 'Statistics',
   'tabs.admin': 'Admin',
   // Shown until the admin sets their own title and introduction
   'page.defaultTitle': 'VolunteerTable',
@@ -121,6 +122,31 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'confirmation.mailNewBrowser': 'This browser doesn’t show your other registrations yet. We sent your personal link to {email}: open it here to see all of them.',
   // Timetable, for admins
   'timetable.adminDragHint': 'Admin: drag with the mouse across a row to add an event there.',
+
+  // Admin: statistics
+  'stats.noEvents': 'No events yet.',
+  'stats.publish': 'Show this tab to volunteers',
+  'stats.publishHint': 'Volunteers then see these statistics too, including the names under “Most volunteer hours”.',
+  'stats.published': 'Volunteers can now see the statistics.',
+  'stats.unpublished': 'The statistics are now only visible to admins.',
+  'stats.publishFailed': 'The setting could not be saved. Please try again.',
+  'stats.people': 'People',
+  'stats.registrations': 'Registrations',
+  'stats.volunteerHours': 'Volunteer hours',
+  'stats.openPlaces': 'Open places (upcoming)',
+  'stats.belowMinimum': 'Upcoming events below minimum',
+  'stats.stillNeeded': 'Still needed',
+  'stats.noneNeeded': 'All upcoming events have reached their minimum.',
+  'stats.perDay': 'Per day',
+  'stats.perLocation': 'Per location',
+  'stats.day': 'Day',
+  'stats.events': 'Events',
+  'stats.hours': 'Hours',
+  'stats.filled': 'Filled',
+  'stats.filledTitle': '{registered} of {capacity} places taken (events without a maximum not counted)',
+  'stats.mostHours': 'Most volunteer hours',
+  'stats.person': 'Person',
+  'stats.shifts': 'Shifts',
 
   // Page footer
   'footer.github': 'VolunteerTable: A Mix it Cup trampoline project, Open Source on GitHub <3',

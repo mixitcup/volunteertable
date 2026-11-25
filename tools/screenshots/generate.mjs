@@ -153,6 +153,7 @@ try {
   await screenshot(volunteerContext, 'events', '#events-tab');
   await screenshot(volunteerContext, 'my-events', '#my-events-tab');
   await screenshot(volunteerContext, 'locations', '#locations-tab');
+  await screenshot(adminContext, 'statistics', '#stats-tab');
   await screenshot(adminContext, 'admin', '#admin-tab');
 
   // The same volunteer on a phone.

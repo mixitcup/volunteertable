@@ -7,6 +7,7 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'tabs.locations': 'Orte',
   'tabs.events': 'Veranstaltungen',
   'tabs.myEvents': 'Meine Schichten',
+  'tabs.stats': 'Statistik',
   'tabs.admin': 'Admin',
   // Shown until the admin sets their own title and introduction
   'page.defaultTitle': 'VolunteerTable',
@@ -119,6 +120,31 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'confirmation.mailNewBrowser': 'Dieser Browser zeigt deine anderen Anmeldungen noch nicht an. Wir haben dir deinen persönlichen Link an {email} geschickt: Öffne ihn hier, dann siehst du alle.',
   // Timetable, for admins
   'timetable.adminDragHint': 'Admin: Zieh mit der Maus über eine Zeile, um dort eine Veranstaltung anzulegen.',
+
+  // Admin: statistics
+  'stats.noEvents': 'Noch keine Veranstaltungen.',
+  'stats.publish': 'Diesen Tab den Helfer*innen zeigen',
+  'stats.publishHint': 'Die Helfer*innen sehen dann diese Statistik auch, mit den Namen unter „Die meisten Stunden“.',
+  'stats.published': 'Die Helfer*innen können die Statistik jetzt sehen.',
+  'stats.unpublished': 'Die Statistik ist jetzt nur für Admins sichtbar.',
+  'stats.publishFailed': 'Die Einstellung konnte nicht gespeichert werden. Bitte versuch es noch einmal.',
+  'stats.people': 'Personen',
+  'stats.registrations': 'Anmeldungen',
+  'stats.volunteerHours': 'Helfer*innen-Stunden',
+  'stats.openPlaces': 'Freie Plätze (kommende)',
+  'stats.belowMinimum': 'Kommende Veranstaltungen unter dem Minimum',
+  'stats.stillNeeded': 'Noch gesucht',
+  'stats.noneNeeded': 'Alle kommenden Veranstaltungen haben ihr Minimum erreicht.',
+  'stats.perDay': 'Pro Tag',
+  'stats.perLocation': 'Pro Ort',
+  'stats.day': 'Tag',
+  'stats.events': 'Veranstaltungen',
+  'stats.hours': 'Stunden',
+  'stats.filled': 'Belegt',
+  'stats.filledTitle': '{registered} von {capacity} Plätzen belegt (Veranstaltungen ohne Maximum nicht mitgezählt)',
+  'stats.mostHours': 'Die meisten Stunden',
+  'stats.person': 'Person',
+  'stats.shifts': 'Schichten',
 
   // Page footer
   'footer.github': 'VolunteerTable: Ein Mix it Cup Trampolin-Projekt, Open Source auf GitHub <3',

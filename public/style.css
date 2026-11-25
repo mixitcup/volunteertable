@@ -1474,3 +1474,114 @@ body {
     --footer-height: 96px;
   }
 }
+
+/* Admin: statistics */
+/* Admins: whether volunteers see the Statistics tab. */
+.stats-publish {
+  max-width: 900px;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--card-muted);
+}
+
+.stats-publish .checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.stats-publish .checkbox-label input {
+  margin: 3px 0 0;
+}
+
+.stats-publish .hint {
+  margin: 4px 0 0 21px;
+}
+
+.admin-stats h3 {
+  margin: 24px 0 8px;
+  font-size: var(--fs-md);
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  max-width: 900px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--card);
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+/* Some events still need people: the number in the app's "help needed" red. */
+.stat-tile.is-alert .stat-value {
+  color: var(--accent-dark);
+}
+
+.stats-needed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stats-needed li {
+  padding: 4px 0;
+}
+
+.stats-table-wrap {
+  max-width: 900px;
+  overflow-x: auto;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.stats-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.stats-table .stats-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fill bar and percentage, side by side within their cell. */
+.stats-table .stats-filled {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

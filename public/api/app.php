@@ -47,6 +47,9 @@ declare(strict_types=1);
  *                                      0 = no registration (e.g. breaks)
  *   POST app.php?action=admin_delete_event { id }    -> { removedRegistrations }
  *   POST app.php?action=admin_save_page { title, intro } -> { page }  page title and introductory text
+ *   POST app.php?action=admin_set_stats_public { public } -> { statsPublic }  shows the Statistics tab to
+ *                                      volunteers (events then include statsPeople: names and events per
+ *                                      person, without email addresses)
  *
  * POST bodies must be JSON, which also protects against cross-site form posts.
  * Email addresses are only returned for this browser's own bookings and to admins.
@@ -67,6 +70,7 @@ header('Cache-Control: no-store');
 const CHANGING_ACTIONS = [
     'book', 'update', 'cancel', 'claim_admin', 'admin_add_booking', 'admin_remove', 'admin_remove_user',
     'admin_save_location', 'admin_delete_location', 'admin_save_event', 'admin_delete_event', 'admin_save_page',
+    'admin_set_stats_public',
 ];
 
 function respond(int $status, array $body): void
@@ -160,7 +164,17 @@ function list_events(): array
          ORDER BY e.starts_at, e.name'
     )->fetchAll());
 
-    return ['locations' => $locations, 'events' => $events];
+    $result = ['locations' => $locations, 'events' => $events];
+    // For the published Statistics tab: who did how much, without email addresses.
+    if (vt_stats_public()) {
+        $result['statsPeople'] = array_map(function (array $user) {
+            return [
+                'names' => $user['names'],
+                'eventIds' => array_column($user['bookings'], 'eventId'),
+            ];
+        }, list_users());
+    }
+    return $result;
 }
 
 function public_admin(?array $admin): ?array
@@ -383,6 +397,7 @@ try {
                 'admin' => public_admin($admin),
                 // Shown to everyone, also before opening the invitation link.
                 'page' => vt_page_texts(),
+                'statsPublic' => vt_stats_public(),
                 // Only admins get the shared invitation link to pass on.
                 'inviteLink' => $admin !== null ? vt_invite_link() : null,
             ]);
@@ -783,6 +798,14 @@ try {
             // An empty intro is allowed (and shows no intro), so it is stored as "".
             vt_save_text('page_intro', $intro ?? '');
             respond(200, ['page' => vt_page_texts()]);
+
+        case 'admin_set_stats_public':
+            require_admin();
+            if (!is_bool($input['public'] ?? null)) {
+                respond(400, ['error' => 'invalid_input']);
+            }
+            vt_set_stats_public($input['public']);
+            respond(200, ['statsPublic' => vt_stats_public()]);
 
         case 'admin_delete_event':
             require_admin();

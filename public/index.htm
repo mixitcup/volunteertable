@@ -66,6 +66,7 @@
       <a href="#locations-tab" role="tab" aria-controls="locations-tab" data-i18n="tabs.locations">Locations</a>
       <a href="#events-tab" role="tab" aria-controls="events-tab" data-i18n="tabs.events">Events</a>
       <a href="#my-events-tab" role="tab" aria-controls="my-events-tab"><span data-i18n="tabs.myEvents">My events</span><span class="tab-count" id="my-events-count" hidden></span></a>
+      <a href="#stats-tab" role="tab" aria-controls="stats-tab" id="stats-tab-link" hidden data-i18n="tabs.stats">Statistics</a>
       <a href="#admin-tab" role="tab" aria-controls="admin-tab" id="admin-tab-link" hidden data-i18n="tabs.admin">Admin</a>
     </nav>
 
@@ -95,6 +96,11 @@
 
     <section id="my-events-tab" class="tab-panel" role="tabpanel" hidden>
       <div class="my-event-list"></div>
+    </section>
+
+    <!-- Admins only. -->
+    <section id="stats-tab" class="tab-panel" role="tabpanel" hidden>
+      <div class="stats-panel"></div>
     </section>
 
     <section id="admin-tab" class="tab-panel" role="tabpanel" hidden>
@@ -141,6 +147,7 @@
       var myBookings = [];
       var adminExists = true;
       var admin = null;        // the admin logged in in this browser, if any
+      var statsPublic = false; // whether volunteers see the Statistics tab
       var adminUsers = [];     // all registered people (only loaded for admins)
       var timetableRenderer = null;
       var timetableScrolledToNow = false;
@@ -175,7 +182,9 @@
         var id = decodeURIComponent(window.location.hash.slice(1));
         var target = id ? document.getElementById(id) : null;
         var panel = target ? target.closest('.tab-panel') : null;
-        if (panel === null || (panel.id === 'admin-tab' && admin === null)) {
+        var notAllowed = panel !== null && ((panel.id === 'admin-tab' && admin === null) ||
+          (panel.id === 'stats-tab' && !canSeeStatistics()));
+        if (panel === null || notAllowed) {
           panel = document.getElementById(DEFAULT_TAB);
           target = null;
         }
@@ -1740,6 +1749,237 @@
         setTimeout(function() { URL.revokeObjectURL(link.href); }, 10000);
       }
 
+      /* ------------------------------------------------------------------
+       * Admin: statistics
+       * ------------------------------------------------------------------ */
+
+      function formatNumber(value) {
+        return new Intl.NumberFormat(I18n.locale(), { maximumFractionDigits: 1 }).format(value);
+      }
+
+      function eventHours(event) {
+        return (new Date(event.end) - new Date(event.start)) / 3600000;
+      }
+
+      // Events, registrations, hours and how full they are, for a group of events.
+      function summarizeEvents(events) {
+        var summary = { events: events.length, registrations: 0, hours: 0, registeredLimited: 0, capacity: 0 };
+        events.forEach(function(event) {
+          summary.registrations += event.registered;
+          summary.hours += event.registered * eventHours(event);
+          // Only events with a maximum count towards how full they are.
+          if (event.capacity !== null && event.capacity > 0) {
+            summary.registeredLimited += Math.min(event.registered, event.capacity);
+            summary.capacity += event.capacity;
+          }
+        });
+        return summary;
+      }
+
+      // "75 %" with a small fill bar, or a dash if none of the events has a maximum.
+      function filledCell(summary) {
+        if (summary.capacity === 0) {
+          return el('td', 'stats-number', '–');
+        }
+        var ratio = summary.registeredLimited / summary.capacity;
+        var meter = el('span', 'capacity-meter', el('span', 'capacity-meter-fill'));
+        meter.firstChild.style.width = Math.round(ratio * 100) + '%';
+        meter.setAttribute('aria-hidden', 'true');
+        var cell = el('td', 'stats-number', el('span', 'stats-filled', meter, Math.round(ratio * 100) + ' %'));
+        cell.title = t('stats.filledTitle', { registered: summary.registeredLimited, capacity: summary.capacity });
+        return cell;
+      }
+
+      function statsTable(headings, rows) {
+        var table = el('table', 'stats-table');
+        var headRow = table.appendChild(el('thead')).appendChild(el('tr'));
+        headings.forEach(function(heading, index) {
+          headRow.appendChild(el('th', index === 0 ? null : 'stats-number', heading));
+        });
+        var body = table.appendChild(el('tbody'));
+        rows.forEach(function(cells) {
+          var row = body.appendChild(el('tr'));
+          cells.forEach(function(cell) { row.appendChild(cell); });
+        });
+        return el('div', 'stats-table-wrap', table);
+      }
+
+      // Events, registrations, hours and fill per group (day or location).
+      function groupTable(firstHeading, groups) {
+        return statsTable(
+          [firstHeading, t('stats.events'), t('stats.registrations'), t('stats.hours'), t('stats.filled')],
+          groups.map(function(group) {
+            var summary = summarizeEvents(group.events);
+            return [
+              el('td', null, group.label),
+              el('td', 'stats-number', String(summary.events)),
+              el('td', 'stats-number', String(summary.registrations)),
+              el('td', 'stats-number', formatNumber(summary.hours)),
+              filledCell(summary)
+            ];
+          }));
+      }
+
+      function statTile(value, label, isAlert) {
+        return el('div', 'stat-tile' + (isAlert ? ' is-alert' : ''),
+          el('span', 'stat-value', value), el('span', 'stat-label', label));
+      }
+
+      // Admins always see the Statistics tab, volunteers once an admin published it.
+      function canSeeStatistics() {
+        return admin !== null || statsPublic;
+      }
+
+      // Everyone with registrations and the events they registered for. Admins
+      // know the email addresses; volunteers get the people without them.
+      function statisticsPeople() {
+        if (admin !== null) {
+          return adminUsers.map(function(user) {
+            return {
+              names: user.names,
+              email: user.email,
+              eventIds: user.bookings.map(function(booking) { return booking.eventId; })
+            };
+          });
+        }
+        return data.statsPeople || [];
+      }
+
+      function renderStatisticsTab(locationInfoIds) {
+        document.getElementById('stats-tab-link').hidden = !canSeeStatistics();
+        var panel = document.querySelector('.stats-panel');
+        panel.textContent = '';
+        if (!canSeeStatistics()) {
+          return;
+        }
+        if (admin !== null) {
+          panel.appendChild(renderStatisticsPublishToggle());
+        }
+        panel.appendChild(renderStatistics(locationInfoIds));
+      }
+
+      // For admins: whether volunteers see this tab too.
+      function renderStatisticsPublishToggle() {
+        var checkbox = el('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = statsPublic;
+        checkbox.addEventListener('change', function() {
+          checkbox.disabled = true;
+          api('admin_set_stats_public', { public: checkbox.checked }).then(function(result) {
+            checkbox.disabled = false;
+            if (!result.ok) {
+              checkbox.checked = statsPublic;
+              showNotice(t('stats.publishFailed'), true);
+              return;
+            }
+            showNotice(t(result.data.statsPublic ? 'stats.published' : 'stats.unpublished'), false);
+            return reload();
+          }, function() {
+            checkbox.disabled = false;
+            checkbox.checked = statsPublic;
+            showNotice(t('common.unreachable'), true);
+          });
+        });
+        return el('div', 'stats-publish',
+          el('label', 'checkbox-label', checkbox, el('span', null, t('stats.publish'))),
+          el('p', 'hint', t('stats.publishHint')));
+      }
+
+      function renderStatistics(locationInfoIds) {
+        var section = el('div', 'admin-stats');
+        if (data.events.length === 0) {
+          section.appendChild(el('p', 'hint', t('stats.noEvents')));
+          return section;
+        }
+
+        var events = data.events.slice().sort(function(a, b) { return new Date(a.start) - new Date(b.start); });
+        var upcoming = events.filter(function(event) { return !isPast(event); });
+        var total = summarizeEvents(events);
+        var openPlaces = upcoming.reduce(function(sum, event) {
+          return event.capacity !== null ? sum + Math.max(event.capacity - event.registered, 0) : sum;
+        }, 0);
+        var stillNeeded = upcoming.filter(function(event) {
+          return event.minimum !== null && event.registered < event.minimum;
+        });
+
+        // Key figures.
+        section.appendChild(el('div', 'stat-tiles',
+          statTile(String(statisticsPeople().length), t('stats.people')),
+          statTile(String(total.registrations), t('stats.registrations')),
+          statTile(formatNumber(total.hours), t('stats.volunteerHours')),
+          statTile(String(openPlaces), t('stats.openPlaces')),
+          statTile(String(stillNeeded.length), t('stats.belowMinimum'), stillNeeded.length > 0)));
+
+        // Upcoming events that still need people, soonest first.
+        section.appendChild(el('h3', null, t('stats.stillNeeded')));
+        if (stillNeeded.length === 0) {
+          section.appendChild(el('p', 'hint', t('stats.noneNeeded')));
+        } else {
+          var neededList = section.appendChild(el('ul', 'stats-needed'));
+          stillNeeded.forEach(function(event) {
+            var link = el('a', null, event.name);
+            link.href = '#' + getEventInfoId(event);
+            neededList.appendChild(el('li', null,
+              el('span', 'location-event-time', formatTimeRange(new Date(event.start), new Date(event.end))), ' ',
+              link, ' · ', locationLink(event.location, locationInfoIds), ' · ',
+              el('span', 'minimum-hint is-missing',
+                tn(event.minimum - event.registered, 'events.missing', { min: event.minimum }))));
+          });
+        }
+
+        // Per day.
+        var days = [];
+        events.forEach(function(event) {
+          var label = new Date(event.start).toLocaleDateString(I18n.locale(),
+            { weekday: 'short', day: 'numeric', month: 'short' });
+          var day = days.filter(function(candidate) { return candidate.label === label; })[0];
+          if (!day) {
+            day = { label: label, events: [] };
+            days.push(day);
+          }
+          day.events.push(event);
+        });
+        section.appendChild(el('h3', null, t('stats.perDay')));
+        section.appendChild(groupTable(t('stats.day'), days));
+
+        // Per location, in the order of the timetable.
+        section.appendChild(el('h3', null, t('stats.perLocation')));
+        section.appendChild(groupTable(t('field.location'), data.locations.map(function(location) {
+          return {
+            label: locationLink(location.name, locationInfoIds),
+            events: events.filter(function(event) { return event.locationId === location.id; })
+          };
+        }).filter(function(group) { return group.events.length > 0; })));
+
+        // The people with the most volunteer hours.
+        var people = statisticsPeople().map(function(person) {
+          var hours = 0;
+          var shifts = 0;
+          person.eventIds.forEach(function(eventId) {
+            var event = findEvent(eventId);
+            if (event !== null) {
+              hours += eventHours(event);
+              shifts++;
+            }
+          });
+          return { name: person.names.join(' / '), email: person.email || null, hours: hours, shifts: shifts };
+        }).filter(function(person) { return person.shifts > 0; })
+          .sort(function(a, b) { return b.hours - a.hours || b.shifts - a.shifts; })
+          .slice(0, 10);
+        if (people.length > 0) {
+          section.appendChild(el('h3', null, t('stats.mostHours')));
+          section.appendChild(statsTable([t('stats.person'), t('stats.shifts'), t('stats.hours')], people.map(function(person) {
+            var nameCell = el('td', null, person.name);
+            // Email addresses only for admins.
+            if (person.email) {
+              nameCell.title = person.email;
+            }
+            return [nameCell, el('td', 'stats-number', String(person.shifts)), el('td', 'stats-number', formatNumber(person.hours))];
+          })));
+        }
+        return section;
+      }
+
       function renderAdminPanel(locationInfoIds) {
         document.getElementById('admin-tab-link').hidden = admin === null;
         var panel = document.querySelector('.admin-panel');
@@ -1851,6 +2091,7 @@
         var locationInfoIds = getLocationInfoIds();
         renderEventInfo(locationInfoIds);
         renderMyEvents(locationInfoIds);
+        renderStatisticsTab(locationInfoIds);
         renderAdminPanel(locationInfoIds);
         renderContentAdmin();
         renderAdminSetup();
@@ -1917,6 +2158,7 @@
           dataVersion = my.data.version;
           noteCodeVersion(my.data.codeVersion);
           page = my.data.page;
+          statsPublic = Boolean(my.data.statsPublic);
           renderPageTexts();
           if (!hasAccess) {
             renderAccess();
@@ -1932,8 +2174,9 @@
             adminUsers = results[1] !== null && results[1].ok ? results[1].data.users : [];
             renderAccess();
             renderAll();
-            // If the admin tab was open but this browser is no longer admin, fall back.
-            if (admin === null && !document.getElementById('admin-tab').hidden) {
+            // If a tab was open that this browser may no longer see, fall back.
+            if ((admin === null && !document.getElementById('admin-tab').hidden) ||
+                (!canSeeStatistics() && !document.getElementById('stats-tab').hidden)) {
               showTabForHash();
             }
           });

@@ -19,7 +19,9 @@ The following screenshots show an imaginary trampoline event (invented by Claude
 |---|---|
 | ![Your registrations, with calendar export](screenshots/my-events.png) | ![Admin tab with invitation link and everyone's registrations](screenshots/admin.png) |
 
-<img src="screenshots/phone.png" alt="Timetable on a phone" width="260">
+| Statistics | On a phone |
+|---|---|
+| ![Statistics tab with key figures, events still needing people, and totals per day and location](screenshots/statistics.png) | <img src="screenshots/phone.png" alt="Timetable on a phone" width="260"> |
 
 ## Setup
 
