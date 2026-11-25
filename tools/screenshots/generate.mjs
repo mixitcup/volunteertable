@@ -1,7 +1,7 @@
 // Generates the screenshots in screenshots/ for the README.
 //
 // Starts a throwaway copy of the app (PHP's built-in server with its own SQLite
-// database in a temporary folder) filled with the example data in demo/, registers
+// database in a temporary folder) filled with the example data in private/seed/, registers
 // an example volunteer for a few shifts and takes screenshots with a headless
 // browser. The browser's clock is fixed to Saturday of the demo competition, so every
 // run shows the same picture. Your own config.php and database are not touched.
@@ -38,18 +38,19 @@ const admin = { name: 'Mara', email: 'mara@example.org' };
 // Shifts the example volunteer registers for (they show up yellow).
 const volunteerShifts = ['Hall setup', 'Score entry: morning', 'Award ceremony', 'Teardown'];
 
-// A copy of private/ with its own configuration, database and example data.
+// A copy of private/ (with the example data in seed/) with its own configuration and database.
 function preparePrivateDir() {
   const dir = mkdtempSync(join(tmpdir(), 'volunteertable-screenshots-'));
   cpSync(join(root, 'private'), dir, {
     recursive: true,
-    filter: (source) => !/[\\/](config\.php|data|seed)$/.test(source)
+    filter: (source) => !/[\\/](config\.php|data)$/.test(source)
   });
-  cpSync(join(here, 'demo'), join(dir, 'seed'), { recursive: true });
   // base_url: links shown on the Admin tab look like a real deployment's.
+  // seed_around_today: the examples keep their dates, matching the fixed browser clock.
   writeFileSync(join(dir, 'config.php'),
     "<?php\nreturn [\n    'db' => ['dsn' => 'sqlite:' . __DIR__ . '/demo.sqlite'],\n" +
-    "    'base_url' => 'https://example.org/volunteers',\n    'mail_method' => 'log',\n];\n");
+    "    'base_url' => 'https://example.org/volunteers',\n    'mail_method' => 'log',\n" +
+    "    'seed_around_today' => false,\n];\n");
   return dir;
 }
 
@@ -130,7 +131,7 @@ try {
 
   // The organizer: becomes admin (first visitor), sets the page text, shares the invitation.
   const adminContext = await newContext(browser);
-  const { adminLink } = await api(adminContext, 'claim_admin', admin);
+  const { adminLink } = await api(adminContext, 'claim_admin', { ...admin, examples: true });
   // Like after opening the admin link: the Admin tab shows it as saved in this browser.
   await adminContext.addInitScript((link) => {
     window.localStorage.setItem('volunteertable-admin-link', link);

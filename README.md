@@ -48,11 +48,11 @@ For local testing:
 php -S localhost:8000 -t public
 ```
 
-Then open http://localhost:8000/index.htm. The first visitor becomes admin and gets the invitation link for volunteers on the Admin tab.
+Then open http://localhost:8000/index.htm. The first visitor becomes admin, can fill the page with example events (a trampoline competition around today) to try things out, and gets the invitation link for volunteers on the Admin tab.
 
 ## Screenshots
 
-The screenshots above are generated from example data in `tools/screenshots/demo/` (a fictional one-weekend trampoline competition). The script starts a throwaway copy of the app with its own SQLite database in a temporary folder, registers an example volunteer for a few shifts and takes the screenshots with a headless browser, with the clock fixed to the competition's Saturday morning. Your `config.php` and database are not touched. It needs PHP and Node.js:
+The screenshots above are generated from the example data in `private/seed/` (a fictional one-weekend trampoline competition, which a new database also starts with). The script starts a throwaway copy of the app with its own SQLite database in a temporary folder, registers an example volunteer for a few shifts and takes the screenshots with a headless browser, with the clock fixed to the competition's Saturday morning. Your `config.php` and database are not touched. It needs PHP and Node.js:
 
 ```sh
 cd tools/screenshots

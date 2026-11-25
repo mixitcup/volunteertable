@@ -28,8 +28,10 @@ declare(strict_types=1);
  *   POST app.php?action=resend  { eventId, email }   -> { ok } [access]
  *
  * Admin:
- *   POST app.php?action=claim_admin  { name, email } -> { admin, adminLink, mailSent } | 409 admin_exists
- *                                      only works while there is no admin yet (no invitation needed)
+ *   POST app.php?action=claim_admin  { name, email, examples? }
+ *                                      -> { admin, adminLink, mailSent, examplesImported } | 409 admin_exists
+ *                                      only works while there is no admin yet (no invitation needed);
+ *                                      examples: fill the empty page with the example events
  *   POST app.php?action=admin_login  { token }       -> { admin } | 404 invalid_link
  *   GET  app.php?action=admin_users                  -> { users: [{ email, names, bookings }] }
  *   POST app.php?action=admin_add_booking { eventId, name, email, sendMail?, overbook? } -> { booking, mailSent }
@@ -579,6 +581,16 @@ try {
             }
             vt_login_admin($admin['id']);
 
+            // The first admin can start with the example events, to try things out.
+            $examplesImported = false;
+            if (!empty($input['examples'])) {
+                try {
+                    $examplesImported = vt_import_examples(vt_db());
+                } catch (Throwable $e) {
+                    error_log('[volunteertable] Could not import the example events: ' . $e->getMessage());
+                }
+            }
+
             $mailSent = true;
             try {
                 vt_send_admin_mail($admin, $token, vt_mail_language($input['lang'] ?? null));
@@ -590,6 +602,7 @@ try {
                 'admin' => public_admin($admin),
                 'adminLink' => vt_admin_link($token, false),
                 'mailSent' => $mailSent,
+                'examplesImported' => $examplesImported,
             ]);
 
         case 'admin_login':

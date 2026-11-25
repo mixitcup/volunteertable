@@ -44,6 +44,7 @@ I18n.addLanguage('en', 'English', 'en-GB', {
   'setup.title': 'Welcome! You’re the first one here.',
   'setup.intro': 'Nobody manages this volunteer table yet. Enter your name and email address to become its admin: you’ll be able to see everyone who registered and remove people from events.',
   'setup.email': 'Email address (we send your admin link here)',
+  'setup.examples': 'Fill the timetable with example events to try things out (you can delete them later).',
   'setup.submit': 'Become admin',
   'setup.someoneElse': 'Someone else has just become admin.',
   'setup.failed': 'Something went wrong. Please try again later.',

@@ -42,6 +42,7 @@ I18n.addLanguage('de', 'Deutsch', 'de-DE', {
   'setup.title': 'Willkommen! Du bist als Erste*r hier.',
   'setup.intro': 'Diese Helfer*innen-Tabelle wird noch von niemandem verwaltet. Gib deinen Namen und deine E-Mail-Adresse ein, um Admin zu werden: Du siehst dann alle Anmeldungen und kannst Personen von Veranstaltungen entfernen.',
   'setup.email': 'E-Mail-Adresse (hierhin schicken wir deinen Admin-Link)',
+  'setup.examples': 'Den Zeitplan mit Beispiel-Veranstaltungen zum Ausprobieren füllen (du kannst sie später löschen).',
   'setup.submit': 'Admin werden',
   'setup.someoneElse': 'Jemand anderes ist gerade Admin geworden.',
   'setup.failed': 'Etwas ist schiefgelaufen. Bitte versuche es später noch einmal.',

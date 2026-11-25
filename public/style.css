@@ -1219,14 +1219,16 @@ a:hover {
 }
 
 /* Checkboxes in the edit dialog: box before the text, not full width. */
-.editor-dialog label.checkbox-label {
+.editor-dialog label.checkbox-label,
+.booking-form label.checkbox-label {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   font-weight: normal;
 }
 
-.editor-dialog label.checkbox-label input {
+.editor-dialog label.checkbox-label input,
+.booking-form label.checkbox-label input {
   display: inline-block;
   width: auto;
   margin: 3px 0 0;

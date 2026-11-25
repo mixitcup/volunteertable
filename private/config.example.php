@@ -30,6 +30,12 @@ return [
     // 'db' => ['dsn' => 'pgsql:host=localhost;dbname=volunteertable', 'username' => 'volunteertable', 'password' => ''],
     // 'db' => ['dsn' => 'sqlite:' . __DIR__ . '/data/volunteertable.sqlite'],
 
+    // The first visitor can fill the empty page with the example events from
+    // private/seed/. They are moved to around the day of setup (the middle day of
+    // the examples becomes that day; times of day stay as written). false keeps
+    // their dates as written.
+    // 'seed_around_today' => true,
+
     // Public URL of the folder containing index.htm, without trailing slash.
     // Required for sending real mail: the edit links in mails are built from it.
     'base_url' => 'https://example.org/volunteertable',

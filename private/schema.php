@@ -6,8 +6,8 @@ declare(strict_types=1);
  * and PostgreSQL all understand are used; ids are random strings generated in
  * PHP, so no auto-increment syntax is needed.
  *
- * The tables are created automatically on the first request. If the database
- * is empty, the example data in private/seed/ is imported.
+ * The tables are created automatically on the first request. The example data
+ * in private/seed/ is only imported on request (see vt_import_examples).
  */
 
 function vt_schema_statements(string $driver): array
@@ -159,11 +159,22 @@ function vt_create_tables(PDO $db): void
     foreach (vt_schema_statements((string) $db->getAttribute(PDO::ATTR_DRIVER_NAME)) as $statement) {
         $db->exec($statement);
     }
+}
 
-    $hasData = $db->query('SELECT COUNT(*) FROM vt_locations')->fetchColumn() > 0;
-    if (!$hasData) {
-        vt_import_seed($db, __DIR__ . '/seed');
+/**
+ * Fills an empty page with the example data in private/seed/ (asked when the
+ * first admin is set up). Returns whether anything was imported: nothing is if
+ * there are locations or events already.
+ */
+function vt_import_examples(PDO $db): bool
+{
+    $hasData = $db->query('SELECT COUNT(*) FROM vt_locations')->fetchColumn() > 0 ||
+        $db->query('SELECT COUNT(*) FROM vt_events')->fetchColumn() > 0;
+    if ($hasData) {
+        return false;
     }
+    vt_import_seed($db, __DIR__ . '/seed');
+    return true;
 }
 
 function vt_read_json(string $file): array
@@ -175,7 +186,32 @@ function vt_read_json(string $file): array
     return $data;
 }
 
-/** Imports locations.json and events.json (with optional example bookings). */
+/**
+ * Whole days to move the example events by, so that their middle day is today.
+ * Times of day stay as written.
+ */
+function vt_seed_shift_days(array $events): int
+{
+    $days = [];
+    foreach ($events as $event) {
+        $days[] = substr((string) $event['start'], 0, 10);
+        $days[] = substr((string) $event['end'], 0, 10);
+    }
+    if ($days === []) {
+        return 0;
+    }
+    sort($days);
+    $first = new DateTimeImmutable($days[0]);
+    $last = new DateTimeImmutable($days[count($days) - 1]);
+    $middle = $first->modify(sprintf('+%d days', intdiv((int) $first->diff($last)->days, 2)));
+    return (int) $middle->diff(new DateTimeImmutable('today'))->format('%r%a');
+}
+
+/**
+ * Imports locations.json and events.json (with optional example bookings). The
+ * events are moved to around today (see vt_seed_shift_days), unless the
+ * configuration sets 'seed_around_today' => false.
+ */
 function vt_import_seed(PDO $db, string $dir): void
 {
     if (!is_file($dir . '/locations.json') || !is_file($dir . '/events.json')) {
@@ -183,6 +219,12 @@ function vt_import_seed(PDO $db, string $dir): void
     }
     $locations = vt_read_json($dir . '/locations.json');
     $events = vt_read_json($dir . '/events.json');
+    // The examples are moved to around today, so the timetable shows something
+    // happening now (unless the configuration keeps the dates as written).
+    $shiftDays = (vt_config()['seed_around_today'] ?? true) ? vt_seed_shift_days($events) : 0;
+    $shift = function (string $dateTime) use ($shiftDays): string {
+        return (new DateTimeImmutable($dateTime))->modify(sprintf('%+d days', $shiftDays))->format('Y-m-d\TH:i:s');
+    };
 
     $db->beginTransaction();
     try {
@@ -211,8 +253,8 @@ function vt_import_seed(PDO $db, string $dir): void
                 $eventId,
                 $locationIds[$event['location']],
                 $event['name'],
-                $event['start'],
-                $event['end'],
+                $shift($event['start']),
+                $shift($event['end']),
                 isset($event['capacity']) ? (int) $event['capacity'] : null,
                 $event['info'] ?? null,
                 $event['url'] ?? null,

@@ -41,6 +41,10 @@
           <span data-i18n="setup.email">Email address (we send your admin link here)</span>
           <input name="email" type="email" required maxlength="254" autocomplete="email">
         </label>
+        <label class="checkbox-label">
+          <input name="examples" type="checkbox">
+          <span data-i18n="setup.examples">Fill the timetable with example events to try things out (you can delete them later).</span>
+        </label>
         <div class="form-buttons">
           <button type="submit" class="button" data-i18n="setup.submit">Become admin</button>
         </div>
@@ -1524,7 +1528,9 @@
           }
 
           submit.disabled = true;
-          api('claim_admin', { name: name, email: email, lang: I18n.language() }).then(function(result) {
+          api('claim_admin', {
+            name: name, email: email, examples: form.elements.examples.checked, lang: I18n.language()
+          }).then(function(result) {
             submit.disabled = false;
             if (result.ok) {
               saveContact(name, email);
