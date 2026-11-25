@@ -178,6 +178,18 @@
       // Tabs are driven by the URL hash, so links to #location-info-N,
       // #event-ID or #my-booking-ID open the right tab, and the browser's
       // back button returns to the previous tab.
+      /*
+       * On phones the tab bar scrolls sideways. Its edges fade out where more tabs
+       * are hidden (see .tabs.has-more-left/right in style.css), so they aren't missed.
+       */
+      function updateTabOverflow() {
+        var bar = document.querySelector('.tabs');
+        bar.classList.toggle('has-more-left', bar.scrollLeft > 2);
+        bar.classList.toggle('has-more-right', bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 2);
+      }
+      document.querySelector('.tabs').addEventListener('scroll', updateTabOverflow, { passive: true });
+      window.addEventListener('resize', updateTabOverflow);
+
       function showTabForHash() {
         var id = decodeURIComponent(window.location.hash.slice(1));
         var target = id ? document.getElementById(id) : null;
@@ -211,6 +223,7 @@
             }
           }
         });
+        updateTabOverflow();
 
         document.querySelectorAll('.is-highlighted').forEach(function(node) {
           node.classList.remove('is-highlighted');
@@ -2095,6 +2108,8 @@
         renderAdminPanel(locationInfoIds);
         renderContentAdmin();
         renderAdminSetup();
+        // Tabs may have appeared or changed language, so the bar's width changed.
+        updateTabOverflow();
         // Re-rendering replaced the highlighted node; mark the new one.
         var id = decodeURIComponent(window.location.hash.slice(1));
         var target = id ? document.getElementById(id) : null;

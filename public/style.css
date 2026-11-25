@@ -830,6 +830,22 @@ body.no-access .tab-panel {
     display: none;
   }
 
+  /* More tabs hidden to the left or right: that edge fades out (set by index.htm). */
+  .tabs.has-more-left {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 48px);
+    mask-image: linear-gradient(to right, transparent, #000 48px);
+  }
+
+  .tabs.has-more-right {
+    -webkit-mask-image: linear-gradient(to left, transparent, #000 48px);
+    mask-image: linear-gradient(to left, transparent, #000 48px);
+  }
+
+  .tabs.has-more-left.has-more-right {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+  }
+
   /* Tabs share the width (four fit on a 390px phone); if they don't fit, the row scrolls. */
   .tabs a {
     flex: 1 0 auto;
